@@ -15,7 +15,9 @@ def test_canonical_hash_is_stable_across_mapping_order() -> None:
     assert canonical_hash(left) == canonical_hash(right)
 
 
-def test_canonical_serialization_preserves_list_positions_and_normalizes_decimals() -> None:
+def test_canonical_serialization_preserves_list_positions_and_normalizes_decimals() -> (
+    None
+):
     value = {"values": [None, Decimal("2.500"), -0.0]}
 
     assert canonical_json_dumps(value) == '{"values":[null,"2.5",0.0]}'

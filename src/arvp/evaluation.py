@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import random
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-import random
 from typing import Any, Literal
 
 from arvp.canonical import canonical_hash
@@ -49,9 +49,7 @@ class EvaluationWindow:
         if self.start > self.end:
             raise EvaluationError("start must be <= end")
         if self.role not in {None, "train", "calibrate", "validate"}:
-            raise EvaluationError(
-                "role must be train, calibrate, validate, or None"
-            )
+            raise EvaluationError("role must be train, calibrate, validate, or None")
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -77,9 +75,7 @@ class EvaluationPlan:
         previous: EvaluationWindow | None = None
         for window in self.windows:
             if not isinstance(window, EvaluationWindow):
-                raise EvaluationError(
-                    "windows must contain EvaluationWindow instances"
-                )
+                raise EvaluationError("windows must contain EvaluationWindow instances")
             if window.window_id in identifiers:
                 raise EvaluationError(f"duplicate window_id: {window.window_id}")
             if previous is not None and window.start < previous.end:
@@ -150,7 +146,11 @@ class StabilityConfig:
             value = getattr(self, field)
             if isinstance(value, bool) or not isinstance(value, int) or value < 1:
                 raise EvaluationError(f"{field} must be a positive integer")
-        if isinstance(self.seed, bool) or not isinstance(self.seed, int) or self.seed < 0:
+        if (
+            isinstance(self.seed, bool)
+            or not isinstance(self.seed, int)
+            or self.seed < 0
+        ):
             raise EvaluationError("seed must be a non-negative integer")
 
 
@@ -311,5 +311,7 @@ def rank_candidates(candidates: Sequence[CandidateScore]) -> tuple[CandidateScor
     if len({candidate.candidate_id for candidate in candidates}) != len(candidates):
         raise EvaluationError("candidate_id values must be unique")
     return tuple(
-        sorted(candidates, key=lambda candidate: (-candidate.score, candidate.candidate_id))
+        sorted(
+            candidates, key=lambda candidate: (-candidate.score, candidate.candidate_id)
+        )
     )

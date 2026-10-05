@@ -6,109 +6,114 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   unit:
-    name: Unit Tests
+    name: unit / py${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version: [3.11, 3.12, 3.13, 3.14]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-      - name: Run tests
-        run: python -m pytest -xvs
+      - name: Install project with declared dev tools
+        run: python -m pip install -e ".[dev]"
+      - name: Run unit tests
+        run: python -m pytest
 
   lint:
-    name: Lint (Ruff)
+    name: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
-      - name: Install Ruff
-        run: pip install ruff
-      - name: Run Ruff check
-        run: ruff check .
-      - name: Format check
-        run: ruff format --check .
+      - name: Install project with declared dev tools
+        run: python -m pip install -e ".[dev]"
+      - name: Ruff check
+        run: python -m ruff check .
+      - name: Ruff format check
+        run: python -m ruff format --check .
 
   typecheck:
-    name: Type Check (Mypy)
+    name: typecheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
-      - name: Install Mypy
-        run: pip install mypy
-      - name: Run Mypy
-        run: mypy src/arvp
+      - name: Install project with declared dev tools
+        run: python -m pip install -e ".[dev]"
+      - name: Mypy
+        run: python -m mypy src/arvp
 
   package:
-    name: Package Build
+    name: package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
-      - name: Install build tools
-        run: pip install build
+      - name: Install project with declared dev tools
+        run: python -m pip install -e ".[dev]"
       - name: Build wheel and sdist
         run: python -m build
       - name: Validate distribution metadata
-        run: twine check dist/*
-      - name: Install package in fresh venv
+        run: python -m twine check dist/*
+      - name: Confirm both distributions were produced
         run: |
-          python -m venv /tmp/test_env
-          /tmp/test_env/bin/pip install dist/*.whl
-      - name: Smoke test import
+          ls -1 dist
+          test -n "$(ls dist/*.whl)" || { echo "wheel missing"; exit 1; }
+          test -n "$(ls dist/*.tar.gz)" || { echo "sdist missing"; exit 1; }
+      - name: Install built wheel into fresh venv
         run: |
-          /tmp/test_env/bin/python -c "import arvp; print('Import successful')"
+          python -m venv "${RUNNER_TEMP}/wheel-venv"
+          "${RUNNER_TEMP}/wheel-venv/bin/python" -m pip install dist/*.whl
+      - name: Smoke the installed wheel outside the repository root
+        run: |
+          mkdir -p "${RUNNER_TEMP}/outside-repo"
+          cd "${RUNNER_TEMP}/outside-repo"
+          "${RUNNER_TEMP}/wheel-venv/bin/python" -c "import arvp, pathlib; p = pathlib.Path(arvp.__file__).resolve(); assert 'site-packages' in p.parts, f'arvp not imported from site-packages: {p}'; print('arvp loaded from', p)"
+      - name: Run the platform smoke probe against the installed wheel
+        run: |
+          cd "${RUNNER_TEMP}/outside-repo"
+          "${RUNNER_TEMP}/wheel-venv/bin/python" "${GITHUB_WORKSPACE}/tools/platform_smoke.py"
+      - name: Verify installed dependency metadata
+        run: '"${RUNNER_TEMP}/wheel-venv/bin/python" -m pip check'
+      - name: Prove the sdist is installable
+        run: |
+          python -m venv "${RUNNER_TEMP}/sdist-venv"
+          "${RUNNER_TEMP}/sdist-venv/bin/python" -m pip install dist/*.tar.gz
+          mkdir -p "${RUNNER_TEMP}/outside-repo-sdist"
+          cd "${RUNNER_TEMP}/outside-repo-sdist"
+          "${RUNNER_TEMP}/sdist-venv/bin/python" -c "import arvp; print('sdist install import ok')"
 
-  platform-smoke-ubuntu:
-    name: Platform Smoke (Ubuntu)
-    runs-on: ubuntu-latest
+  platform-smoke:
+    name: platform-smoke / ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: ubuntu
+          - os: windows-latest
+            label: windows
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
-      - name: Install dependencies
-        run: pip install -e ".[dev]"
-      - name: Run core operations
-        run: |
-          python -m arvp.canonical --dry-run
-          python -m arvp.canonical --hash
-          python -m arvp.scenarios --dry-run
-
-  platform-smoke-windows:
-    name: Platform Smoke (Windows)
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install dependencies
-        run: pip install -e ".[dev]"
-      - name: Run core operations
-        run: |
-          python -m arvp.canonical --dry-run
-          python -m arvp.canonical --hash
-          python -m arvp.scenarios --dry-run
+      - name: Install project with declared dev tools
+        run: python -m pip install -e ".[dev]"
+      - name: Run platform smoke probe
+        run: python tools/platform_smoke.py
