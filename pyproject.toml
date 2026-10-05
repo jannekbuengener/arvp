@@ -16,7 +16,42 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = [
+  "pytest>=8",
+  "ruff>=0.11",
+  "mypy>=1.13",
+  "build>=1.2",
+  "twine>=6.1",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+select = [
+  "E",   # pycodestyle errors
+  "W",   # pyflakes
+  "F",   # isort
+  "I",   # pep8-naming
+  "N",   # flake8-bandit (security)
+  "UP",  # pyupgrade
+]
+ignore = [
+  "E501",  # line length (handled by formatter)
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+ignore_missing_imports = false
+warn_return_any = true
+warn_unused_configs = true
+show_error_codes = true
+
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.11, 3.12, 3.13, 3.14]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: Run tests
+        run: python -m pytest -xvs
+
+  lint:
+    name: Lint (Ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Ruff
+        run: pip install ruff
+      - name: Run Ruff check
+        run: ruff check .
+      - name: Format check
+        run: ruff format --check .
+
+  typecheck:
+    name: Type Check (Mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Mypy
+        run: pip install mypy
+      - name: Run Mypy
+        run: mypy src/arvp
+
+  package:
+    name: Package Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install build tools
+        run: pip install build
+      - name: Build wheel and sdist
+        run: python -m build
+      - name: Validate distribution metadata
+        run: twine check dist/*
+      - name: Install package in fresh venv
+        run: |
+          python -m venv /tmp/test_env
+          /tmp/test_env/bin/pip install dist/*.whl
+      - name: Smoke test import
+        run: |
+          /tmp/test_env/bin/python -c "import arvp; print('Import successful')"
+
+  platform-smoke-ubuntu:
+    name: Platform Smoke (Ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run core operations
+        run: |
+          python -m arvp.canonical --dry-run
+          python -m arvp.canonical --hash
+          python -m arvp.scenarios --dry-run
+
+  platform-smoke-windows:
+    name: Platform Smoke (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run core operations
+        run: |
+          python -m arvp.canonical --dry-run
+          python -m arvp.canonical --hash
+          python -m arvp.scenarios --dry-run
