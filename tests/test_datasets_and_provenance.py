@@ -21,9 +21,7 @@ def test_content_identity_is_provider_neutral_when_selected_fields_match() -> No
     file_identity = identify_content(
         file_records, fields=("ts", "score"), order_by="ts"
     )
-    db_identity = identify_content(
-        db_records, fields=("ts", "score"), order_by="ts"
-    )
+    db_identity = identify_content(db_records, fields=("ts", "score"), order_by="ts")
 
     assert file_identity.fingerprint == db_identity.fingerprint
     assert file_identity.record_count == 2

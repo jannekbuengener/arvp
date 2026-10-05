@@ -9,7 +9,6 @@ from typing import Any
 
 from arvp.canonical import canonical_hash
 
-
 CONTENT_IDENTITY_SCHEMA_VERSION = "arvp.dataset-content.v1"
 _FORBIDDEN_EVIDENCE_KEYS = frozenset(
     {
@@ -49,7 +48,9 @@ def forbidden_evidence_keys(value: Any) -> tuple[str, ...]:
                 if key_text.casefold() in _FORBIDDEN_EVIDENCE_KEYS:
                     found.add(key_text)
                 walk(item)
-        elif isinstance(node, Sequence) and not isinstance(node, (str, bytes, bytearray)):
+        elif isinstance(node, Sequence) and not isinstance(
+            node, (str, bytes, bytearray)
+        ):
             for item in node:
                 walk(item)
 

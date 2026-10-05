@@ -8,11 +8,11 @@ it is not a general-purpose object serializer.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from decimal import Decimal, InvalidOperation
 import hashlib
 import json
 import math
+from collections.abc import Mapping, Sequence
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 

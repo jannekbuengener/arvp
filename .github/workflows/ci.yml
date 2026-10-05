@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: unit / py${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install project with declared dev tools
+        run: python -m pip install -e ".[dev]"
+      - name: Run unit tests
+        run: python -m pytest
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Install project with declared dev tools
+        run: python -m pip install -e ".[dev]"
+      - name: Ruff check
+        run: python -m ruff check .
+      - name: Ruff format check
+        run: python -m ruff format --check .
+
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Install project with declared dev tools
+        run: python -m pip install -e ".[dev]"
+      - name: Mypy
+        run: python -m mypy src/arvp
+
+  package:
+    name: package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Install project with declared dev tools
+        run: python -m pip install -e ".[dev]"
+      - name: Build wheel and sdist
+        run: python -m build
+      - name: Validate distribution metadata
+        run: python -m twine check dist/*
+      - name: Confirm both distributions were produced
+        run: |
+          ls -1 dist
+          test -n "$(ls dist/*.whl)" || { echo "wheel missing"; exit 1; }
+          test -n "$(ls dist/*.tar.gz)" || { echo "sdist missing"; exit 1; }
+      - name: Install built wheel into fresh venv
+        run: |
+          python -m venv "${RUNNER_TEMP}/wheel-venv"
+          "${RUNNER_TEMP}/wheel-venv/bin/python" -m pip install dist/*.whl
+      - name: Smoke the installed wheel outside the repository root
+        run: |
+          mkdir -p "${RUNNER_TEMP}/outside-repo"
+          cd "${RUNNER_TEMP}/outside-repo"
+          "${RUNNER_TEMP}/wheel-venv/bin/python" -c "import arvp, pathlib; p = pathlib.Path(arvp.__file__).resolve(); assert 'site-packages' in p.parts, f'arvp not imported from site-packages: {p}'; print('arvp loaded from', p)"
+      - name: Run the platform smoke probe against the installed wheel
+        run: |
+          cd "${RUNNER_TEMP}/outside-repo"
+          "${RUNNER_TEMP}/wheel-venv/bin/python" "${GITHUB_WORKSPACE}/tools/platform_smoke.py"
+      - name: Verify installed dependency metadata
+        run: '"${RUNNER_TEMP}/wheel-venv/bin/python" -m pip check'
+      - name: Prove the sdist is installable
+        run: |
+          python -m venv "${RUNNER_TEMP}/sdist-venv"
+          "${RUNNER_TEMP}/sdist-venv/bin/python" -m pip install dist/*.tar.gz
+          mkdir -p "${RUNNER_TEMP}/outside-repo-sdist"
+          cd "${RUNNER_TEMP}/outside-repo-sdist"
+          "${RUNNER_TEMP}/sdist-venv/bin/python" -c "import arvp; print('sdist install import ok')"
+
+  platform-smoke:
+    name: platform-smoke / ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: ubuntu
+          - os: windows-latest
+            label: windows
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Install project with declared dev tools
+        run: python -m pip install -e ".[dev]"
+      - name: Run platform smoke probe
+        run: python tools/platform_smoke.py

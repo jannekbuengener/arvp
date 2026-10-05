@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
 import copy
+import re
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-import re
 from typing import Any
 
 from arvp.canonical import canonical_hash, canonical_json_dumps
 from arvp.datasets import assert_evidence_safe
-
 
 _GROUP_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
