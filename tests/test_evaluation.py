@@ -189,3 +189,13 @@ def test_window_result_rejects_untyped_metrics_and_missing_metric_contract() -> 
         WindowResult("test", True, metrics={"score": 1})  # type: ignore[arg-type]
     with pytest.raises(EvaluationError, match="metric_contract"):
         WindowResult("test", True, metrics=(contract.value("score", "measured", 1),))
+
+
+def test_legacy_gate_and_candidate_score_remain_module_compatible() -> None:
+    from arvp import evaluation
+
+    assert evaluation.GateCriterion is not None
+    assert evaluation.GateDecision is not None
+    assert evaluation.evaluate_gate is not None
+    assert evaluation.CandidateScore is not None
+    assert evaluation.rank_candidates is not None

@@ -1,0 +1,1774 @@
+{
+  "canonical_contract_version": "arvp.canonical.v2",
+  "comparison_contract_version": "arvp.metric-comparison.v1",
+  "gate_policy_contract_version": "arvp.gate-policy.v1",
+  "gate_decision_contract_version": "arvp.gate-decision.v1",
+  "vectors": [
+    {
+      "name": "comparison_maximize_improvement",
+      "kind": "comparison",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": {
+        "candidate": {
+          "candidate_id": "candidate-a",
+          "implementation_id": "impl-a",
+          "revision": "r1",
+          "configuration": {
+            "beta": 2,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 100
+          }
+        ]
+      },
+      "candidate": {
+        "candidate": {
+          "candidate_id": "candidate-b",
+          "implementation_id": "impl-b",
+          "revision": "r2",
+          "configuration": {
+            "beta": 3,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 110
+          }
+        ]
+      },
+      "expected_json": "{\"absolute_delta\":{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":1,\"type\":\"decimal\"}},\"baseline_candidate_fingerprint\":\"fe26d54f7dfba934d2f163bc3b945c2e2e7bc22d7a03a90ecdafaabfee5f9ad8\",\"baseline_compatible\":true,\"baseline_metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"baseline_partition_fingerprint\":\"48f61178fbe96f0a6a3b255f03cc86a7c95df1378fde57686d4fb9f002ede10e\",\"baseline_partition_id\":\"calibration\",\"baseline_status\":\"measured\",\"baseline_value\":{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":2,\"type\":\"decimal\"}},\"candidate_compatible\":true,\"candidate_fingerprint\":\"12968fcacbc995f5fcc5e3be9632b5fcf98c03b0becdde78f7ccd66fabbf8aea\",\"candidate_metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"candidate_partition_fingerprint\":\"48f61178fbe96f0a6a3b255f03cc86a7c95df1378fde57686d4fb9f002ede10e\",\"candidate_partition_id\":\"calibration\",\"candidate_status\":\"measured\",\"candidate_value\":{\"$arvp\":{\"coefficient\":\"11\",\"exponent\":1,\"type\":\"decimal\"}},\"contract_version\":\"arvp.metric-comparison.v1\",\"direction\":\"maximize\",\"direction_result\":\"improved\",\"directional_relative_delta\":{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":-1,\"type\":\"decimal\"}},\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"metric_id\":\"search.relevance\",\"observation_id\":\"aggregate\",\"reasons\":[],\"relative_delta\":{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":-1,\"type\":\"decimal\"}},\"relative_delta_reason\":null,\"required\":true,\"status\":\"complete\",\"unit\":\"1\"}",
+      "expected_fingerprint": "b8a2f31e83c379cbabcb9c5192f3ae46dba691ed7c5e7f1024942c3e4550f855"
+    },
+    {
+      "name": "comparison_minimize_improvement",
+      "kind": "comparison",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": {
+        "candidate": {
+          "candidate_id": "candidate-a",
+          "implementation_id": "impl-a",
+          "revision": "r1",
+          "configuration": {
+            "beta": 2,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "tempo.abs_error",
+            "status": "measured",
+            "value": 10
+          }
+        ]
+      },
+      "candidate": {
+        "candidate": {
+          "candidate_id": "candidate-b",
+          "implementation_id": "impl-b",
+          "revision": "r2",
+          "configuration": {
+            "beta": 3,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "tempo.abs_error",
+            "status": "measured",
+            "value": 8
+          }
+        ]
+      },
+      "expected_json": "{\"absolute_delta\":{\"$arvp\":{\"coefficient\":\"-2\",\"exponent\":0,\"type\":\"decimal\"}},\"baseline_candidate_fingerprint\":\"fe26d54f7dfba934d2f163bc3b945c2e2e7bc22d7a03a90ecdafaabfee5f9ad8\",\"baseline_compatible\":true,\"baseline_metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"baseline_partition_fingerprint\":\"48f61178fbe96f0a6a3b255f03cc86a7c95df1378fde57686d4fb9f002ede10e\",\"baseline_partition_id\":\"calibration\",\"baseline_status\":\"measured\",\"baseline_value\":{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":1,\"type\":\"decimal\"}},\"candidate_compatible\":true,\"candidate_fingerprint\":\"12968fcacbc995f5fcc5e3be9632b5fcf98c03b0becdde78f7ccd66fabbf8aea\",\"candidate_metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"candidate_partition_fingerprint\":\"48f61178fbe96f0a6a3b255f03cc86a7c95df1378fde57686d4fb9f002ede10e\",\"candidate_partition_id\":\"calibration\",\"candidate_status\":\"measured\",\"candidate_value\":{\"$arvp\":{\"coefficient\":\"8\",\"exponent\":0,\"type\":\"decimal\"}},\"contract_version\":\"arvp.metric-comparison.v1\",\"direction\":\"minimize\",\"direction_result\":\"improved\",\"directional_relative_delta\":{\"$arvp\":{\"coefficient\":\"2\",\"exponent\":-1,\"type\":\"decimal\"}},\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"metric_id\":\"tempo.abs_error\",\"observation_id\":\"aggregate\",\"reasons\":[],\"relative_delta\":{\"$arvp\":{\"coefficient\":\"-2\",\"exponent\":-1,\"type\":\"decimal\"}},\"relative_delta_reason\":null,\"required\":true,\"status\":\"complete\",\"unit\":\"bpm\"}",
+      "expected_fingerprint": "725b796833f67626cd0e3c8b26d143aabc364cea08893af018968422350516ba"
+    },
+    {
+      "name": "comparison_neutral_raw_delta",
+      "kind": "comparison",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": {
+        "candidate": {
+          "candidate_id": "candidate-a",
+          "implementation_id": "impl-a",
+          "revision": "r1",
+          "configuration": {
+            "beta": 2,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "runtime.ms",
+            "status": "measured",
+            "value": 120
+          }
+        ]
+      },
+      "candidate": {
+        "candidate": {
+          "candidate_id": "candidate-b",
+          "implementation_id": "impl-b",
+          "revision": "r2",
+          "configuration": {
+            "beta": 3,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "runtime.ms",
+            "status": "measured",
+            "value": 105
+          }
+        ]
+      },
+      "expected_json": "{\"absolute_delta\":{\"$arvp\":{\"coefficient\":\"-15\",\"exponent\":0,\"type\":\"decimal\"}},\"baseline_candidate_fingerprint\":\"fe26d54f7dfba934d2f163bc3b945c2e2e7bc22d7a03a90ecdafaabfee5f9ad8\",\"baseline_compatible\":true,\"baseline_metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"baseline_partition_fingerprint\":\"48f61178fbe96f0a6a3b255f03cc86a7c95df1378fde57686d4fb9f002ede10e\",\"baseline_partition_id\":\"calibration\",\"baseline_status\":\"measured\",\"baseline_value\":{\"$arvp\":{\"coefficient\":\"12\",\"exponent\":1,\"type\":\"decimal\"}},\"candidate_compatible\":true,\"candidate_fingerprint\":\"12968fcacbc995f5fcc5e3be9632b5fcf98c03b0becdde78f7ccd66fabbf8aea\",\"candidate_metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"candidate_partition_fingerprint\":\"48f61178fbe96f0a6a3b255f03cc86a7c95df1378fde57686d4fb9f002ede10e\",\"candidate_partition_id\":\"calibration\",\"candidate_status\":\"measured\",\"candidate_value\":{\"$arvp\":{\"coefficient\":\"105\",\"exponent\":0,\"type\":\"decimal\"}},\"contract_version\":\"arvp.metric-comparison.v1\",\"direction\":\"neutral\",\"direction_result\":null,\"directional_relative_delta\":null,\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"metric_id\":\"runtime.ms\",\"observation_id\":\"aggregate\",\"reasons\":[],\"relative_delta\":{\"$arvp\":{\"coefficient\":\"-125\",\"exponent\":-3,\"type\":\"decimal\"}},\"relative_delta_reason\":null,\"required\":false,\"status\":\"complete\",\"unit\":\"ms\"}",
+      "expected_fingerprint": "3619e21a70020639f88d292d9cdd8fc62c06c6255a982a3554080670a71af22a"
+    },
+    {
+      "name": "comparison_negative_baseline",
+      "kind": "comparison",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": {
+        "candidate": {
+          "candidate_id": "candidate-a",
+          "implementation_id": "impl-a",
+          "revision": "r1",
+          "configuration": {
+            "beta": 2,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": -100
+          }
+        ]
+      },
+      "candidate": {
+        "candidate": {
+          "candidate_id": "candidate-b",
+          "implementation_id": "impl-b",
+          "revision": "r2",
+          "configuration": {
+            "beta": 3,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": -90
+          }
+        ]
+      },
+      "expected_json": "{\"absolute_delta\":{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":1,\"type\":\"decimal\"}},\"baseline_candidate_fingerprint\":\"fe26d54f7dfba934d2f163bc3b945c2e2e7bc22d7a03a90ecdafaabfee5f9ad8\",\"baseline_compatible\":true,\"baseline_metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"baseline_partition_fingerprint\":\"48f61178fbe96f0a6a3b255f03cc86a7c95df1378fde57686d4fb9f002ede10e\",\"baseline_partition_id\":\"calibration\",\"baseline_status\":\"measured\",\"baseline_value\":{\"$arvp\":{\"coefficient\":\"-1\",\"exponent\":2,\"type\":\"decimal\"}},\"candidate_compatible\":true,\"candidate_fingerprint\":\"12968fcacbc995f5fcc5e3be9632b5fcf98c03b0becdde78f7ccd66fabbf8aea\",\"candidate_metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"candidate_partition_fingerprint\":\"48f61178fbe96f0a6a3b255f03cc86a7c95df1378fde57686d4fb9f002ede10e\",\"candidate_partition_id\":\"calibration\",\"candidate_status\":\"measured\",\"candidate_value\":{\"$arvp\":{\"coefficient\":\"-9\",\"exponent\":1,\"type\":\"decimal\"}},\"contract_version\":\"arvp.metric-comparison.v1\",\"direction\":\"maximize\",\"direction_result\":\"improved\",\"directional_relative_delta\":{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":-1,\"type\":\"decimal\"}},\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"metric_id\":\"search.relevance\",\"observation_id\":\"aggregate\",\"reasons\":[],\"relative_delta\":{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":-1,\"type\":\"decimal\"}},\"relative_delta_reason\":null,\"required\":true,\"status\":\"complete\",\"unit\":\"1\"}",
+      "expected_fingerprint": "8535455145eddf59a37f834cd09a0195660723c3fbdb83d9a40ff693b6c24d18"
+    },
+    {
+      "name": "comparison_zero_baseline",
+      "kind": "comparison",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": {
+        "candidate": {
+          "candidate_id": "candidate-a",
+          "implementation_id": "impl-a",
+          "revision": "r1",
+          "configuration": {
+            "beta": 2,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 0
+          }
+        ]
+      },
+      "candidate": {
+        "candidate": {
+          "candidate_id": "candidate-b",
+          "implementation_id": "impl-b",
+          "revision": "r2",
+          "configuration": {
+            "beta": 3,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 5
+          }
+        ]
+      },
+      "expected_json": "{\"absolute_delta\":{\"$arvp\":{\"coefficient\":\"5\",\"exponent\":0,\"type\":\"decimal\"}},\"baseline_candidate_fingerprint\":\"fe26d54f7dfba934d2f163bc3b945c2e2e7bc22d7a03a90ecdafaabfee5f9ad8\",\"baseline_compatible\":true,\"baseline_metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"baseline_partition_fingerprint\":\"48f61178fbe96f0a6a3b255f03cc86a7c95df1378fde57686d4fb9f002ede10e\",\"baseline_partition_id\":\"calibration\",\"baseline_status\":\"measured\",\"baseline_value\":{\"$arvp\":{\"coefficient\":\"0\",\"exponent\":0,\"type\":\"decimal\"}},\"candidate_compatible\":true,\"candidate_fingerprint\":\"12968fcacbc995f5fcc5e3be9632b5fcf98c03b0becdde78f7ccd66fabbf8aea\",\"candidate_metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"candidate_partition_fingerprint\":\"48f61178fbe96f0a6a3b255f03cc86a7c95df1378fde57686d4fb9f002ede10e\",\"candidate_partition_id\":\"calibration\",\"candidate_status\":\"measured\",\"candidate_value\":{\"$arvp\":{\"coefficient\":\"5\",\"exponent\":0,\"type\":\"decimal\"}},\"contract_version\":\"arvp.metric-comparison.v1\",\"direction\":\"maximize\",\"direction_result\":\"improved\",\"directional_relative_delta\":null,\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"metric_id\":\"search.relevance\",\"observation_id\":\"aggregate\",\"reasons\":[],\"relative_delta\":null,\"relative_delta_reason\":\"baseline_zero\",\"required\":true,\"status\":\"complete\",\"unit\":\"1\"}",
+      "expected_fingerprint": "757ac103b2cfae1d12811f9bdcb245ee87c460e31701d9b298c6fd3e14941644"
+    },
+    {
+      "name": "comparison_missing_candidate",
+      "kind": "comparison",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": {
+        "candidate": {
+          "candidate_id": "candidate-a",
+          "implementation_id": "impl-a",
+          "revision": "r1",
+          "configuration": {
+            "beta": 2,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 100
+          }
+        ]
+      },
+      "candidate": null,
+      "expected_json": "{\"absolute_delta\":null,\"baseline_candidate_fingerprint\":\"fe26d54f7dfba934d2f163bc3b945c2e2e7bc22d7a03a90ecdafaabfee5f9ad8\",\"baseline_compatible\":true,\"baseline_metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"baseline_partition_fingerprint\":\"48f61178fbe96f0a6a3b255f03cc86a7c95df1378fde57686d4fb9f002ede10e\",\"baseline_partition_id\":\"calibration\",\"baseline_status\":\"measured\",\"baseline_value\":{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":2,\"type\":\"decimal\"}},\"candidate_compatible\":false,\"candidate_fingerprint\":null,\"candidate_metric_contract_fingerprint\":null,\"candidate_partition_fingerprint\":null,\"candidate_partition_id\":null,\"candidate_status\":null,\"candidate_value\":null,\"contract_version\":\"arvp.metric-comparison.v1\",\"direction\":\"maximize\",\"direction_result\":null,\"directional_relative_delta\":null,\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"metric_id\":\"search.relevance\",\"observation_id\":\"aggregate\",\"reasons\":[\"missing_candidate\"],\"relative_delta\":null,\"relative_delta_reason\":null,\"required\":true,\"status\":\"incomplete\",\"unit\":\"1\"}",
+      "expected_fingerprint": "ab76a273ffd1dc66415a7be1d102af6f621c6eb0015806e22362ee98feafbf47"
+    },
+    {
+      "name": "comparison_missing_baseline",
+      "kind": "comparison",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": null,
+      "candidate": {
+        "candidate": {
+          "candidate_id": "candidate-b",
+          "implementation_id": "impl-b",
+          "revision": "r2",
+          "configuration": {
+            "beta": 3,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 110
+          }
+        ]
+      },
+      "expected_json": "{\"absolute_delta\":null,\"baseline_candidate_fingerprint\":null,\"baseline_compatible\":false,\"baseline_metric_contract_fingerprint\":null,\"baseline_partition_fingerprint\":null,\"baseline_partition_id\":null,\"baseline_status\":null,\"baseline_value\":null,\"candidate_compatible\":true,\"candidate_fingerprint\":\"12968fcacbc995f5fcc5e3be9632b5fcf98c03b0becdde78f7ccd66fabbf8aea\",\"candidate_metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"candidate_partition_fingerprint\":\"48f61178fbe96f0a6a3b255f03cc86a7c95df1378fde57686d4fb9f002ede10e\",\"candidate_partition_id\":\"calibration\",\"candidate_status\":\"measured\",\"candidate_value\":{\"$arvp\":{\"coefficient\":\"11\",\"exponent\":1,\"type\":\"decimal\"}},\"contract_version\":\"arvp.metric-comparison.v1\",\"direction\":\"maximize\",\"direction_result\":null,\"directional_relative_delta\":null,\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"metric_id\":\"search.relevance\",\"observation_id\":\"aggregate\",\"reasons\":[\"missing_baseline\"],\"relative_delta\":null,\"relative_delta_reason\":null,\"required\":true,\"status\":\"incomplete\",\"unit\":\"1\"}",
+      "expected_fingerprint": "71eae100fdffa58c0ed48ea26e3a9cf6dfc7fba7617a13cf968acfe1da341e6e"
+    },
+    {
+      "name": "comparison_unknown_candidate_value",
+      "kind": "comparison",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": {
+        "candidate": {
+          "candidate_id": "candidate-a",
+          "implementation_id": "impl-a",
+          "revision": "r1",
+          "configuration": {
+            "beta": 2,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 100
+          }
+        ]
+      },
+      "candidate": {
+        "candidate": {
+          "candidate_id": "candidate-b",
+          "implementation_id": "impl-b",
+          "revision": "r2",
+          "configuration": {
+            "beta": 3,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "unknown"
+          }
+        ]
+      },
+      "expected_json": "{\"absolute_delta\":null,\"baseline_candidate_fingerprint\":\"fe26d54f7dfba934d2f163bc3b945c2e2e7bc22d7a03a90ecdafaabfee5f9ad8\",\"baseline_compatible\":true,\"baseline_metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"baseline_partition_fingerprint\":\"48f61178fbe96f0a6a3b255f03cc86a7c95df1378fde57686d4fb9f002ede10e\",\"baseline_partition_id\":\"calibration\",\"baseline_status\":\"measured\",\"baseline_value\":{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":2,\"type\":\"decimal\"}},\"candidate_compatible\":true,\"candidate_fingerprint\":\"12968fcacbc995f5fcc5e3be9632b5fcf98c03b0becdde78f7ccd66fabbf8aea\",\"candidate_metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"candidate_partition_fingerprint\":\"48f61178fbe96f0a6a3b255f03cc86a7c95df1378fde57686d4fb9f002ede10e\",\"candidate_partition_id\":\"calibration\",\"candidate_status\":\"unknown\",\"candidate_value\":null,\"contract_version\":\"arvp.metric-comparison.v1\",\"direction\":\"maximize\",\"direction_result\":null,\"directional_relative_delta\":null,\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"metric_id\":\"search.relevance\",\"observation_id\":\"aggregate\",\"reasons\":[\"unknown_value\"],\"relative_delta\":null,\"relative_delta_reason\":null,\"required\":true,\"status\":\"incomplete\",\"unit\":\"1\"}",
+      "expected_fingerprint": "62a499b2364ced6eff8461ee4517abd3e3ad81c95dbfb861fe5830debcec1140"
+    },
+    {
+      "name": "comparison_not_applicable",
+      "kind": "comparison",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": {
+        "candidate": {
+          "candidate_id": "candidate-a",
+          "implementation_id": "impl-a",
+          "revision": "r1",
+          "configuration": {
+            "beta": 2,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "runtime.ms",
+            "status": "not_applicable"
+          }
+        ]
+      },
+      "candidate": {
+        "candidate": {
+          "candidate_id": "candidate-b",
+          "implementation_id": "impl-b",
+          "revision": "r2",
+          "configuration": {
+            "beta": 3,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "runtime.ms",
+            "status": "not_applicable"
+          }
+        ]
+      },
+      "expected_json": "{\"absolute_delta\":null,\"baseline_candidate_fingerprint\":\"fe26d54f7dfba934d2f163bc3b945c2e2e7bc22d7a03a90ecdafaabfee5f9ad8\",\"baseline_compatible\":true,\"baseline_metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"baseline_partition_fingerprint\":\"48f61178fbe96f0a6a3b255f03cc86a7c95df1378fde57686d4fb9f002ede10e\",\"baseline_partition_id\":\"calibration\",\"baseline_status\":\"not_applicable\",\"baseline_value\":null,\"candidate_compatible\":true,\"candidate_fingerprint\":\"12968fcacbc995f5fcc5e3be9632b5fcf98c03b0becdde78f7ccd66fabbf8aea\",\"candidate_metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"candidate_partition_fingerprint\":\"48f61178fbe96f0a6a3b255f03cc86a7c95df1378fde57686d4fb9f002ede10e\",\"candidate_partition_id\":\"calibration\",\"candidate_status\":\"not_applicable\",\"candidate_value\":null,\"contract_version\":\"arvp.metric-comparison.v1\",\"direction\":\"neutral\",\"direction_result\":null,\"directional_relative_delta\":null,\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"metric_id\":\"runtime.ms\",\"observation_id\":\"aggregate\",\"reasons\":[\"not_applicable\"],\"relative_delta\":null,\"relative_delta_reason\":null,\"required\":false,\"status\":\"not_applicable\",\"unit\":\"ms\"}",
+      "expected_fingerprint": "948a97fe6063518c89bb695b701cbe7ac9d667324f74c3220eb3a14107107525"
+    },
+    {
+      "name": "comparison_partition_mismatch",
+      "kind": "comparison",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": {
+        "candidate": {
+          "candidate_id": "candidate-a",
+          "implementation_id": "impl-a",
+          "revision": "r1",
+          "configuration": {
+            "beta": 2,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 100
+          }
+        ]
+      },
+      "candidate": {
+        "candidate": {
+          "candidate_id": "candidate-b",
+          "implementation_id": "impl-b",
+          "revision": "r2",
+          "configuration": {
+            "beta": 3,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration-shifted",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 3,
+            "fingerprint": "0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 110
+          }
+        ]
+      },
+      "expected_json": "{\"absolute_delta\":null,\"baseline_candidate_fingerprint\":\"fe26d54f7dfba934d2f163bc3b945c2e2e7bc22d7a03a90ecdafaabfee5f9ad8\",\"baseline_compatible\":true,\"baseline_metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"baseline_partition_fingerprint\":\"48f61178fbe96f0a6a3b255f03cc86a7c95df1378fde57686d4fb9f002ede10e\",\"baseline_partition_id\":\"calibration\",\"baseline_status\":\"measured\",\"baseline_value\":{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":2,\"type\":\"decimal\"}},\"candidate_compatible\":true,\"candidate_fingerprint\":\"12968fcacbc995f5fcc5e3be9632b5fcf98c03b0becdde78f7ccd66fabbf8aea\",\"candidate_metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"candidate_partition_fingerprint\":\"304f264641a85e4e3fa41811778fd9e6ab7304fbc96f926883a130139a883dbd\",\"candidate_partition_id\":\"calibration-shifted\",\"candidate_status\":\"measured\",\"candidate_value\":{\"$arvp\":{\"coefficient\":\"11\",\"exponent\":1,\"type\":\"decimal\"}},\"contract_version\":\"arvp.metric-comparison.v1\",\"direction\":\"maximize\",\"direction_result\":null,\"directional_relative_delta\":null,\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"metric_id\":\"search.relevance\",\"observation_id\":\"aggregate\",\"reasons\":[\"partition_mismatch\"],\"relative_delta\":null,\"relative_delta_reason\":null,\"required\":true,\"status\":\"incomplete\",\"unit\":\"1\"}",
+      "expected_fingerprint": "fe9bc084b255313a6d7abe9d6143ea484714eaf9dbbf2bee55000296b1e9a1be"
+    },
+    {
+      "name": "policy_single_absolute_threshold",
+      "kind": "policy",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "policy_id": "release.floor",
+      "criteria": [
+        {
+          "criterion_id": "search.min",
+          "criterion_type": "absolute_threshold",
+          "metric_id": "search.relevance",
+          "operator": "gte",
+          "threshold": "0.5"
+        }
+      ],
+      "expected_json": "{\"contract_version\":\"arvp.gate-policy.v1\",\"criteria\":[{\"criterion_id\":\"search.min\",\"criterion_type\":\"absolute_threshold\",\"metric_id\":\"search.relevance\",\"operator\":\"gte\",\"threshold\":{\"$arvp\":{\"coefficient\":\"5\",\"exponent\":-1,\"type\":\"decimal\"}}}],\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"policy_id\":\"release.floor\"}",
+      "expected_fingerprint": "8af59571a72105c6259008dcd9f9fff1567bd8113a696e076244beb5ab9da395"
+    },
+    {
+      "name": "policy_mixed_criteria_deterministic_order",
+      "kind": "policy",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "policy_id": "release.default",
+      "criteria": [
+        {
+          "criterion_id": "tempo.regression",
+          "criterion_type": "relative_baseline",
+          "metric_id": "tempo.abs_error",
+          "mode": "no_regression_beyond",
+          "threshold": "0.05"
+        },
+        {
+          "criterion_id": "z.runtime.ceiling",
+          "criterion_type": "absolute_threshold",
+          "metric_id": "runtime.ms",
+          "operator": "lte",
+          "threshold": 250
+        },
+        {
+          "criterion_id": "a.search.floor",
+          "criterion_type": "absolute_threshold",
+          "metric_id": "search.relevance",
+          "operator": "gte",
+          "threshold": "0.5"
+        }
+      ],
+      "expected_json": "{\"contract_version\":\"arvp.gate-policy.v1\",\"criteria\":[{\"criterion_id\":\"a.search.floor\",\"criterion_type\":\"absolute_threshold\",\"metric_id\":\"search.relevance\",\"operator\":\"gte\",\"threshold\":{\"$arvp\":{\"coefficient\":\"5\",\"exponent\":-1,\"type\":\"decimal\"}}},{\"criterion_id\":\"tempo.regression\",\"criterion_type\":\"relative_baseline\",\"metric_id\":\"tempo.abs_error\",\"mode\":\"no_regression_beyond\",\"threshold\":{\"$arvp\":{\"coefficient\":\"5\",\"exponent\":-2,\"type\":\"decimal\"}}},{\"criterion_id\":\"z.runtime.ceiling\",\"criterion_type\":\"absolute_threshold\",\"metric_id\":\"runtime.ms\",\"operator\":\"lte\",\"threshold\":{\"$arvp\":{\"coefficient\":\"25\",\"exponent\":1,\"type\":\"decimal\"}}}],\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"policy_id\":\"release.default\"}",
+      "expected_fingerprint": "0769ecca576538593334fb00cda62f1547eb66bc80d2d9b55980a8cfe593f860"
+    },
+    {
+      "name": "decision_pass_absolute_threshold",
+      "kind": "decision",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": {
+        "candidate": {
+          "candidate_id": "candidate-a",
+          "implementation_id": "impl-a",
+          "revision": "r1",
+          "configuration": {
+            "beta": 2,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 100
+          }
+        ]
+      },
+      "candidate": {
+        "candidate": {
+          "candidate_id": "candidate-b",
+          "implementation_id": "impl-b",
+          "revision": "r2",
+          "configuration": {
+            "beta": 3,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 110
+          }
+        ]
+      },
+      "policy_id": "release.floor",
+      "criteria": [
+        {
+          "criterion_id": "search.min",
+          "criterion_type": "absolute_threshold",
+          "metric_id": "search.relevance",
+          "operator": "gte",
+          "threshold": 105
+        }
+      ],
+      "expected_json": "{\"contract_version\":\"arvp.gate-decision.v1\",\"criteria\":[{\"actual\":{\"$arvp\":{\"coefficient\":\"11\",\"exponent\":1,\"type\":\"decimal\"}},\"comparison_fingerprint\":\"b8a2f31e83c379cbabcb9c5192f3ae46dba691ed7c5e7f1024942c3e4550f855\",\"criterion\":{\"criterion_id\":\"search.min\",\"criterion_type\":\"absolute_threshold\",\"metric_id\":\"search.relevance\",\"operator\":\"gte\",\"threshold\":{\"$arvp\":{\"coefficient\":\"105\",\"exponent\":0,\"type\":\"decimal\"}}},\"outcome\":\"pass\",\"reason\":null}],\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"policy_fingerprint\":\"4da8f00e7b82d8055b4274e95faae0a1c54ac77889f6a20287164eadc9081660\",\"verdict\":\"PASS\"}",
+      "expected_fingerprint": "423b00f7d3f107b98aa4e79b817c4ba022018556796c5a485248b05f88112062"
+    },
+    {
+      "name": "decision_pass_absolute_without_baseline",
+      "kind": "decision",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": null,
+      "candidate": {
+        "candidate": {
+          "candidate_id": "candidate-b",
+          "implementation_id": "impl-b",
+          "revision": "r2",
+          "configuration": {
+            "beta": 3,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": "0.75"
+          }
+        ]
+      },
+      "policy_id": "release.floor",
+      "criteria": [
+        {
+          "criterion_id": "search.min",
+          "criterion_type": "absolute_threshold",
+          "metric_id": "search.relevance",
+          "operator": "gte",
+          "threshold": "0.7"
+        }
+      ],
+      "expected_json": "{\"contract_version\":\"arvp.gate-decision.v1\",\"criteria\":[{\"actual\":{\"$arvp\":{\"coefficient\":\"75\",\"exponent\":-2,\"type\":\"decimal\"}},\"comparison_fingerprint\":\"1b41838d1e7b9a1157ea4fd9c20b1c3753ea42f0faa6260d74acc54a296df191\",\"criterion\":{\"criterion_id\":\"search.min\",\"criterion_type\":\"absolute_threshold\",\"metric_id\":\"search.relevance\",\"operator\":\"gte\",\"threshold\":{\"$arvp\":{\"coefficient\":\"7\",\"exponent\":-1,\"type\":\"decimal\"}}},\"outcome\":\"pass\",\"reason\":null}],\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"policy_fingerprint\":\"33d39a026634d54f1e756ea3b1327d7194009b1524601c1576c3448ce3107ac1\",\"verdict\":\"PASS\"}",
+      "expected_fingerprint": "064477a3b312d9eb029dc7257e24190565ce916b3976d006e7bf491653be40ee"
+    },
+    {
+      "name": "decision_fail_absolute_threshold",
+      "kind": "decision",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": {
+        "candidate": {
+          "candidate_id": "candidate-a",
+          "implementation_id": "impl-a",
+          "revision": "r1",
+          "configuration": {
+            "beta": 2,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 100
+          }
+        ]
+      },
+      "candidate": {
+        "candidate": {
+          "candidate_id": "candidate-b",
+          "implementation_id": "impl-b",
+          "revision": "r2",
+          "configuration": {
+            "beta": 3,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 80
+          }
+        ]
+      },
+      "policy_id": "release.floor",
+      "criteria": [
+        {
+          "criterion_id": "search.min",
+          "criterion_type": "absolute_threshold",
+          "metric_id": "search.relevance",
+          "operator": "gte",
+          "threshold": 90
+        }
+      ],
+      "expected_json": "{\"contract_version\":\"arvp.gate-decision.v1\",\"criteria\":[{\"actual\":{\"$arvp\":{\"coefficient\":\"8\",\"exponent\":1,\"type\":\"decimal\"}},\"comparison_fingerprint\":\"6621c439463673b42d520483b5320d63ef9fd55ea822f67d59644fdf0c197f44\",\"criterion\":{\"criterion_id\":\"search.min\",\"criterion_type\":\"absolute_threshold\",\"metric_id\":\"search.relevance\",\"operator\":\"gte\",\"threshold\":{\"$arvp\":{\"coefficient\":\"9\",\"exponent\":1,\"type\":\"decimal\"}}},\"outcome\":\"fail\",\"reason\":null}],\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"policy_fingerprint\":\"af6324cbecf23f84e98e2c1e952373936d2c4d060108bed0a99912bdfb088533\",\"verdict\":\"FAIL\"}",
+      "expected_fingerprint": "5b23694197bc6810140b6ea028dd4b0e6d42fd112c7f49fc9b907bcb85a9eef2"
+    },
+    {
+      "name": "decision_hold_missing_candidate",
+      "kind": "decision",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": {
+        "candidate": {
+          "candidate_id": "candidate-a",
+          "implementation_id": "impl-a",
+          "revision": "r1",
+          "configuration": {
+            "beta": 2,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 100
+          }
+        ]
+      },
+      "candidate": null,
+      "policy_id": "release.floor",
+      "criteria": [
+        {
+          "criterion_id": "search.min",
+          "criterion_type": "absolute_threshold",
+          "metric_id": "search.relevance",
+          "operator": "gte",
+          "threshold": 90
+        }
+      ],
+      "expected_json": "{\"contract_version\":\"arvp.gate-decision.v1\",\"criteria\":[{\"actual\":null,\"comparison_fingerprint\":\"ab76a273ffd1dc66415a7be1d102af6f621c6eb0015806e22362ee98feafbf47\",\"criterion\":{\"criterion_id\":\"search.min\",\"criterion_type\":\"absolute_threshold\",\"metric_id\":\"search.relevance\",\"operator\":\"gte\",\"threshold\":{\"$arvp\":{\"coefficient\":\"9\",\"exponent\":1,\"type\":\"decimal\"}}},\"outcome\":\"hold\",\"reason\":\"missing_candidate\"}],\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"policy_fingerprint\":\"af6324cbecf23f84e98e2c1e952373936d2c4d060108bed0a99912bdfb088533\",\"verdict\":\"HOLD\"}",
+      "expected_fingerprint": "303a174d5ad4d5abb14d25e373291ccb2448d2556ae214eb813e416e5b632aae"
+    },
+    {
+      "name": "decision_hold_unknown_value",
+      "kind": "decision",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": {
+        "candidate": {
+          "candidate_id": "candidate-a",
+          "implementation_id": "impl-a",
+          "revision": "r1",
+          "configuration": {
+            "beta": 2,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 100
+          }
+        ]
+      },
+      "candidate": {
+        "candidate": {
+          "candidate_id": "candidate-b",
+          "implementation_id": "impl-b",
+          "revision": "r2",
+          "configuration": {
+            "beta": 3,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "unknown"
+          }
+        ]
+      },
+      "policy_id": "release.floor",
+      "criteria": [
+        {
+          "criterion_id": "search.min",
+          "criterion_type": "absolute_threshold",
+          "metric_id": "search.relevance",
+          "operator": "gte",
+          "threshold": 90
+        }
+      ],
+      "expected_json": "{\"contract_version\":\"arvp.gate-decision.v1\",\"criteria\":[{\"actual\":null,\"comparison_fingerprint\":\"62a499b2364ced6eff8461ee4517abd3e3ad81c95dbfb861fe5830debcec1140\",\"criterion\":{\"criterion_id\":\"search.min\",\"criterion_type\":\"absolute_threshold\",\"metric_id\":\"search.relevance\",\"operator\":\"gte\",\"threshold\":{\"$arvp\":{\"coefficient\":\"9\",\"exponent\":1,\"type\":\"decimal\"}}},\"outcome\":\"hold\",\"reason\":\"unknown_value\"}],\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"policy_fingerprint\":\"af6324cbecf23f84e98e2c1e952373936d2c4d060108bed0a99912bdfb088533\",\"verdict\":\"HOLD\"}",
+      "expected_fingerprint": "f17b715ebb5fef43de2f22bea6274fa961226fd9470d1168962b7535c1c09c88"
+    },
+    {
+      "name": "decision_optional_not_applicable_pass",
+      "kind": "decision",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": {
+        "candidate": {
+          "candidate_id": "candidate-a",
+          "implementation_id": "impl-a",
+          "revision": "r1",
+          "configuration": {
+            "beta": 2,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "runtime.ms",
+            "status": "not_applicable"
+          }
+        ]
+      },
+      "candidate": {
+        "candidate": {
+          "candidate_id": "candidate-b",
+          "implementation_id": "impl-b",
+          "revision": "r2",
+          "configuration": {
+            "beta": 3,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "runtime.ms",
+            "status": "not_applicable"
+          }
+        ]
+      },
+      "policy_id": "release.runtime",
+      "criteria": [
+        {
+          "criterion_id": "runtime.ceiling",
+          "criterion_type": "absolute_threshold",
+          "metric_id": "runtime.ms",
+          "operator": "lte",
+          "threshold": 250
+        }
+      ],
+      "expected_json": "{\"contract_version\":\"arvp.gate-decision.v1\",\"criteria\":[{\"actual\":null,\"comparison_fingerprint\":\"948a97fe6063518c89bb695b701cbe7ac9d667324f74c3220eb3a14107107525\",\"criterion\":{\"criterion_id\":\"runtime.ceiling\",\"criterion_type\":\"absolute_threshold\",\"metric_id\":\"runtime.ms\",\"operator\":\"lte\",\"threshold\":{\"$arvp\":{\"coefficient\":\"25\",\"exponent\":1,\"type\":\"decimal\"}}},\"outcome\":\"not_applicable\",\"reason\":\"not_applicable\"}],\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"policy_fingerprint\":\"89e09c21d89b46a6691ab548952949a22c81544475b9900b6b63b53157ab40ce\",\"verdict\":\"PASS\"}",
+      "expected_fingerprint": "e5d3e82c6bce324afe74080fe446f6d2d79c4f8c636c962f92ffd8f9e581831d"
+    },
+    {
+      "name": "decision_fail_relative_regression",
+      "kind": "decision",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": {
+        "candidate": {
+          "candidate_id": "candidate-a",
+          "implementation_id": "impl-a",
+          "revision": "r1",
+          "configuration": {
+            "beta": 2,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "tempo.abs_error",
+            "status": "measured",
+            "value": 10
+          }
+        ]
+      },
+      "candidate": {
+        "candidate": {
+          "candidate_id": "candidate-b",
+          "implementation_id": "impl-b",
+          "revision": "r2",
+          "configuration": {
+            "beta": 3,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "tempo.abs_error",
+            "status": "measured",
+            "value": 11
+          }
+        ]
+      },
+      "policy_id": "release.tempo",
+      "criteria": [
+        {
+          "criterion_id": "tempo.regression",
+          "criterion_type": "relative_baseline",
+          "metric_id": "tempo.abs_error",
+          "mode": "no_regression_beyond",
+          "threshold": "0.05"
+        }
+      ],
+      "expected_json": "{\"contract_version\":\"arvp.gate-decision.v1\",\"criteria\":[{\"actual\":{\"$arvp\":{\"coefficient\":\"-1\",\"exponent\":-1,\"type\":\"decimal\"}},\"comparison_fingerprint\":\"7b95ac9758b51c2e3e7619825a3ea80a4f51854a48e23d6766567ab49c3acc95\",\"criterion\":{\"criterion_id\":\"tempo.regression\",\"criterion_type\":\"relative_baseline\",\"metric_id\":\"tempo.abs_error\",\"mode\":\"no_regression_beyond\",\"threshold\":{\"$arvp\":{\"coefficient\":\"5\",\"exponent\":-2,\"type\":\"decimal\"}}},\"outcome\":\"fail\",\"reason\":null}],\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"policy_fingerprint\":\"df54958f6b182928babf82cb0e12abb32cc4e08902742e16ada8aacd6e84a3d0\",\"verdict\":\"FAIL\"}",
+      "expected_fingerprint": "8131516eb91c6806124b2c3a5a37c69e976f1bc4a8ea11cbe13f29073b18cf77"
+    },
+    {
+      "name": "decision_fail_over_hold_precedence",
+      "kind": "decision",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": {
+        "candidate": {
+          "candidate_id": "candidate-a",
+          "implementation_id": "impl-a",
+          "revision": "r1",
+          "configuration": {
+            "beta": 2,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 100
+          },
+          {
+            "observation_id": "aggregate",
+            "metric_id": "tempo.abs_error",
+            "status": "measured",
+            "value": 10
+          }
+        ]
+      },
+      "candidate": {
+        "candidate": {
+          "candidate_id": "candidate-b",
+          "implementation_id": "impl-b",
+          "revision": "r2",
+          "configuration": {
+            "beta": 3,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 80
+          },
+          {
+            "observation_id": "aggregate",
+            "metric_id": "tempo.abs_error",
+            "status": "unknown"
+          }
+        ]
+      },
+      "policy_id": "release.combined",
+      "criteria": [
+        {
+          "criterion_id": "search.min",
+          "criterion_type": "absolute_threshold",
+          "metric_id": "search.relevance",
+          "operator": "gte",
+          "threshold": 90
+        },
+        {
+          "criterion_id": "tempo.regression",
+          "criterion_type": "relative_baseline",
+          "metric_id": "tempo.abs_error",
+          "mode": "no_regression_beyond",
+          "threshold": "0.05"
+        }
+      ],
+      "expected_json": "{\"contract_version\":\"arvp.gate-decision.v1\",\"criteria\":[{\"actual\":{\"$arvp\":{\"coefficient\":\"8\",\"exponent\":1,\"type\":\"decimal\"}},\"comparison_fingerprint\":\"6621c439463673b42d520483b5320d63ef9fd55ea822f67d59644fdf0c197f44\",\"criterion\":{\"criterion_id\":\"search.min\",\"criterion_type\":\"absolute_threshold\",\"metric_id\":\"search.relevance\",\"operator\":\"gte\",\"threshold\":{\"$arvp\":{\"coefficient\":\"9\",\"exponent\":1,\"type\":\"decimal\"}}},\"outcome\":\"fail\",\"reason\":null},{\"actual\":null,\"comparison_fingerprint\":\"1c7d666731678b58a1e8532a99d05f28cc44d5dfb509ba9d83119232f74d06a2\",\"criterion\":{\"criterion_id\":\"tempo.regression\",\"criterion_type\":\"relative_baseline\",\"metric_id\":\"tempo.abs_error\",\"mode\":\"no_regression_beyond\",\"threshold\":{\"$arvp\":{\"coefficient\":\"5\",\"exponent\":-2,\"type\":\"decimal\"}}},\"outcome\":\"hold\",\"reason\":\"unknown_value\"}],\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"policy_fingerprint\":\"146d0c9dddaecacef0a79c0eed55978b3b8cb14e7ce94d77ca0c21f037b00e73\",\"verdict\":\"FAIL\"}",
+      "expected_fingerprint": "b1ac4470e07cbef1a7a21347f7829a059dd9275b0b2822e80fe5f9f0fa28e8aa"
+    },
+    {
+      "name": "decision_hold_relative_baseline_zero",
+      "kind": "decision",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": {
+        "candidate": {
+          "candidate_id": "candidate-a",
+          "implementation_id": "impl-a",
+          "revision": "r1",
+          "configuration": {
+            "beta": 2,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 0
+          }
+        ]
+      },
+      "candidate": {
+        "candidate": {
+          "candidate_id": "candidate-b",
+          "implementation_id": "impl-b",
+          "revision": "r2",
+          "configuration": {
+            "beta": 3,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 5
+          }
+        ]
+      },
+      "policy_id": "release.relative",
+      "criteria": [
+        {
+          "criterion_id": "search.improvement",
+          "criterion_type": "relative_baseline",
+          "metric_id": "search.relevance",
+          "mode": "minimum_improvement",
+          "threshold": "0.01"
+        }
+      ],
+      "expected_json": "{\"contract_version\":\"arvp.gate-decision.v1\",\"criteria\":[{\"actual\":null,\"comparison_fingerprint\":\"757ac103b2cfae1d12811f9bdcb245ee87c460e31701d9b298c6fd3e14941644\",\"criterion\":{\"criterion_id\":\"search.improvement\",\"criterion_type\":\"relative_baseline\",\"metric_id\":\"search.relevance\",\"mode\":\"minimum_improvement\",\"threshold\":{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":-2,\"type\":\"decimal\"}}},\"outcome\":\"hold\",\"reason\":\"relative_delta_unavailable\"}],\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"policy_fingerprint\":\"fedfafbc1ff9a5de7a43a8c89bb6203a0666e1cecc88cc4a6054acf471bcb42c\",\"verdict\":\"HOLD\"}",
+      "expected_fingerprint": "5c17f5abc546f317e2a1bcc1f6ec4b305fdda37de3d510fcd8d2550640944bc3"
+    },
+    {
+      "name": "decision_pass_minimum_improvement_boundary",
+      "kind": "decision",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "baseline": {
+        "candidate": {
+          "candidate_id": "candidate-a",
+          "implementation_id": "impl-a",
+          "revision": "r1",
+          "configuration": {
+            "beta": 2,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 100
+          }
+        ]
+      },
+      "candidate": {
+        "candidate": {
+          "candidate_id": "candidate-b",
+          "implementation_id": "impl-b",
+          "revision": "r2",
+          "configuration": {
+            "beta": 3,
+            "alpha": 1
+          }
+        },
+        "partition": {
+          "partition_id": "calibration",
+          "partition_role": "calibration",
+          "content_identity": {
+            "schema_version": "arvp.dataset-content.v2",
+            "ordering": "ordered",
+            "record_count": 2,
+            "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+          }
+        },
+        "metrics": [
+          {
+            "observation_id": "aggregate",
+            "metric_id": "search.relevance",
+            "status": "measured",
+            "value": 105
+          }
+        ]
+      },
+      "policy_id": "release.relative",
+      "criteria": [
+        {
+          "criterion_id": "search.improvement",
+          "criterion_type": "relative_baseline",
+          "metric_id": "search.relevance",
+          "mode": "minimum_improvement",
+          "threshold": "0.05"
+        }
+      ],
+      "expected_json": "{\"contract_version\":\"arvp.gate-decision.v1\",\"criteria\":[{\"actual\":{\"$arvp\":{\"coefficient\":\"5\",\"exponent\":-2,\"type\":\"decimal\"}},\"comparison_fingerprint\":\"0f8da860de6d4061b79785cc00b080cd49fbd52fe1e976bb8c8f87d3229b3e3f\",\"criterion\":{\"criterion_id\":\"search.improvement\",\"criterion_type\":\"relative_baseline\",\"metric_id\":\"search.relevance\",\"mode\":\"minimum_improvement\",\"threshold\":{\"$arvp\":{\"coefficient\":\"5\",\"exponent\":-2,\"type\":\"decimal\"}}},\"outcome\":\"pass\",\"reason\":null}],\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"policy_fingerprint\":\"f9f62949d57671fb5d09e3316af85b85daa7297780cd563c258b23678648a955\",\"verdict\":\"PASS\"}",
+      "expected_fingerprint": "c6a18e6af3dafeeb912035b59358c6b92de32629cd4ac34908016679fc63aa59"
+    }
+  ]
+}
