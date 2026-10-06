@@ -17,6 +17,7 @@ from arvp.evaluation import (
     resample_stability,
     run_evaluation_plan,
 )
+from arvp.evidence import FailureEvidence
 
 
 def test_evaluation_plan_requires_ordered_non_overlapping_windows() -> None:
@@ -36,7 +37,7 @@ def test_evaluation_plan_requires_ordered_non_overlapping_windows() -> None:
         )
 
 
-def test_run_evaluation_plan_records_runner_exceptions() -> None:
+def test_run_evaluation_plan_fail_fast_by_default() -> None:
     plan = EvaluationPlan(
         "p", (EvaluationWindow("one", 0, 1), EvaluationWindow("two", 2, 3))
     )
@@ -44,11 +45,53 @@ def test_run_evaluation_plan_records_runner_exceptions() -> None:
     def runner(window: EvaluationWindow) -> WindowResult:
         if window.window_id == "one":
             raise RuntimeError("missing")
-        return WindowResult("two", True, {"score": 1})
+        return WindowResult("two", True, metrics={"score": 1})
 
-    results = run_evaluation_plan(plan, runner=runner)
+    # Default policy is "raise" - should propagate the exception
+    with pytest.raises(RuntimeError, match="missing"):
+        run_evaluation_plan(plan, runner=runner)
+
+
+def test_run_evaluation_plan_capture_policy() -> None:
+    plan = EvaluationPlan(
+        "p", (EvaluationWindow("one", 0, 1), EvaluationWindow("two", 2, 3))
+    )
+
+    def runner(window: EvaluationWindow) -> WindowResult:
+        if window.window_id == "one":
+            raise RuntimeError("missing")
+        return WindowResult("two", True, metrics={"score": 1})
+
+    results = run_evaluation_plan(plan, runner=runner, unexpected_exceptions="capture")
     assert [result.succeeded for result in results] == [False, True]
-    assert results[0].failure_reason == "RuntimeError: missing"
+
+    # Check failure evidence structure
+    failed_result = results[0]
+    assert not failed_result.succeeded
+    assert failed_result.failure is not None
+    assert failed_result.failure.code == "unexpected_exception"
+    assert failed_result.failure.exception_type == "RuntimeError"
+    assert failed_result.failure.stage == "runner"
+    assert failed_result.failure.metadata is None
+
+
+def test_run_evaluation_plan_records_runner_exceptions_explicit() -> None:
+    plan = EvaluationPlan(
+        "p", (EvaluationWindow("one", 0, 1), EvaluationWindow("two", 2, 3))
+    )
+
+    def runner(window: EvaluationWindow) -> WindowResult:
+        if window.window_id == "one":
+            raise RuntimeError("missing")
+        return WindowResult("two", True, metrics={"score": 1})
+
+    results = run_evaluation_plan(plan, runner=runner, unexpected_exceptions="capture")
+    assert [result.succeeded for result in results] == [False, True]
+
+    # Verify the failure evidence matches expected structure
+    failed_result = results[0]
+    assert failed_result.failure.code == "unexpected_exception"
+    assert failed_result.failure.exception_type == "RuntimeError"
 
 
 def test_stability_is_deterministic_and_gate_is_explicit() -> None:
@@ -76,3 +119,27 @@ def test_gate_and_candidate_comparison_fail_closed_and_tie_break_stably() -> Non
         ]
     )
     assert [candidate.candidate_id for candidate in ranked] == ["alpha", "zeta"]
+
+
+def test_window_result_failure_evidence_expected_domain_failure() -> None:
+    result = WindowResult(
+        "test",
+        False,
+        failure=FailureEvidence.expected_domain_failure(
+            stage="runner", metadata={"reason": "timeout"}
+        ),
+    )
+    assert result.failure.code == "expected_domain_failure"
+    assert result.failure.metadata == {"reason": "timeout"}
+    assert result.failure.exception_type is None
+    assert result.failure.stage == "runner"
+
+
+def test_window_result_rejects_failure_on_success() -> None:
+    with pytest.raises(EvaluationError, match="cannot have a failure"):
+        WindowResult("test", True, failure=FailureEvidence(code="invalid_input"))
+
+
+def test_window_result_requires_failure_on_failure() -> None:
+    with pytest.raises(EvaluationError, match="failed result requires a failure"):
+        WindowResult("test", False)

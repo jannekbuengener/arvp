@@ -17,7 +17,10 @@ from arvp.canonical import (
     canonical_json_dumps,
     validate_fingerprint,
 )
-from arvp.datasets import assert_evidence_safe
+from arvp.evidence import (
+    PortableEvidenceError,
+    validate_portable_metadata,
+)
 
 _RUN_ID_RE = re.compile(r"^run-[a-f0-9]{12}-\d{4}$")
 _VALID_STATUSES = frozenset({"running", "completed", "failed"})
@@ -51,6 +54,17 @@ def _parse_utc(value: object, field: str) -> str:
     return text
 
 
+def _assert_evidence_safe(value: Any) -> None:
+    """Fail closed when evidence could include a path, secret, or DSN.
+
+    Delegates to the shared portable evidence boundary.
+    """
+    try:
+        validate_portable_metadata(value)
+    except PortableEvidenceError as exc:
+        raise ProvenanceError(str(exc)) from exc
+
+
 @dataclass(frozen=True, slots=True)
 class RunProvenance:
     """Inputs that determine a reproducible run independently of its attempt."""
@@ -69,11 +83,7 @@ class RunProvenance:
         if not isinstance(self.configuration, Mapping):
             raise ProvenanceError("configuration must be a mapping")
         copied = dict(self.configuration)
-        try:
-            assert_evidence_safe(copied)
-        except ValueError as exc:
-            raise ProvenanceError(str(exc)) from exc
-        # Canonicalizability check
+        _assert_evidence_safe(copied)
         try:
             canonical_json_dumps(copied)
         except CanonicalizationError as exc:
@@ -100,7 +110,11 @@ class RunProvenance:
 
 @dataclass(frozen=True, slots=True)
 class RunRecord:
-    """One lifecycle observation in the JSONL registry."""
+    """One lifecycle observation in the JSONL registry.
+
+    Note: RunRecord is local operational state, not portable evidence.
+    failure_reason remains a free-form string for local diagnostics.
+    """
 
     run_id: str
     provenance_fingerprint: str
@@ -146,11 +160,7 @@ class RunRecord:
             if not isinstance(self.result, Mapping):
                 raise ProvenanceError("result must be a mapping")
             copied = dict(self.result)
-            try:
-                assert_evidence_safe(copied)
-            except ValueError as exc:
-                raise ProvenanceError(str(exc)) from exc
-            # Canonicalizability check
+            _assert_evidence_safe(copied)
             try:
                 canonical_json_dumps(copied)
             except CanonicalizationError as exc:

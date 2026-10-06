@@ -13,6 +13,11 @@ from arvp.canonical import (
     canonical_hash,
     validate_fingerprint,
 )
+from arvp.evidence import (
+    FailureEvidence,
+    PortableEvidenceError,
+    validate_portable_metadata,
+)
 
 
 class EvaluationError(ValueError):
@@ -23,6 +28,17 @@ def _require_text(value: object, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise EvaluationError(f"{field} must be a non-empty string")
     return value.strip()
+
+
+def _assert_evidence_safe(value: Any) -> None:
+    """Fail closed when evidence could include a path, secret, or DSN.
+
+    Delegates to the shared portable evidence boundary.
+    """
+    try:
+        validate_portable_metadata(value)
+    except PortableEvidenceError as exc:
+        raise EvaluationError(str(exc)) from exc
 
 
 def _decimal(value: object, field: str) -> Decimal:
@@ -102,28 +118,39 @@ class WindowResult:
     window_id: str
     succeeded: bool
     metrics: Mapping[str, Any] | None = None
-    failure_reason: str | None = None
+    failure: FailureEvidence | None = None
 
     def __post_init__(self) -> None:
         _require_text(self.window_id, "window_id")
         if not isinstance(self.succeeded, bool):
             raise EvaluationError("succeeded must be bool")
-        if self.succeeded and self.failure_reason is not None:
-            raise EvaluationError("successful result cannot have failure_reason")
-        if not self.succeeded and self.failure_reason is None:
-            raise EvaluationError("failed result requires failure_reason")
-        if self.failure_reason is not None:
-            _require_text(self.failure_reason, "failure_reason")
-        if self.metrics is not None and not isinstance(self.metrics, Mapping):
-            raise EvaluationError("metrics must be a mapping")
+        if self.succeeded and self.failure is not None:
+            raise EvaluationError("successful result cannot have a failure")
+        if not self.succeeded and self.failure is None:
+            raise EvaluationError("failed result requires a failure")
+        if self.failure is not None and not isinstance(self.failure, FailureEvidence):
+            raise EvaluationError("failure must be a FailureEvidence instance")
+        if self.metrics is not None:
+            if not isinstance(self.metrics, Mapping):
+                raise EvaluationError("metrics must be a mapping")
+            _assert_evidence_safe(self.metrics)
+
+
+RunnerExceptionPolicy = Literal["raise", "capture"]
 
 
 def run_evaluation_plan(
     plan: EvaluationPlan,
     *,
     runner: Callable[[EvaluationWindow], WindowResult],
+    unexpected_exceptions: RunnerExceptionPolicy = "raise",
 ) -> tuple[WindowResult, ...]:
-    """Execute all declared windows; a runner exception becomes a failed result."""
+    """Execute all declared windows.
+
+    Unexpected runner exceptions:
+    - "raise" (default): propagate the exception (fail-fast)
+    - "capture": convert to FailureEvidence with code "unexpected_exception"
+    """
     if not isinstance(plan, EvaluationPlan):
         raise EvaluationError("plan must be an EvaluationPlan")
     results: list[WindowResult] = []
@@ -131,8 +158,13 @@ def run_evaluation_plan(
         try:
             result = runner(window)
         except Exception as exc:
-            detail = f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
-            result = WindowResult(window.window_id, False, failure_reason=detail)
+            if unexpected_exceptions == "raise":
+                raise
+            result = WindowResult(
+                window_id=window.window_id,
+                succeeded=False,
+                failure=FailureEvidence.from_unexpected_exception(exc, stage="runner"),
+            )
         if not isinstance(result, WindowResult) or result.window_id != window.window_id:
             raise EvaluationError("runner must return a matching WindowResult")
         results.append(result)
