@@ -518,3 +518,47 @@ def test_stability_arithmetic_ignores_ambient_decimal_context() -> None:
         getcontext().prec = previous
     assert first == second
     assert first.observed_delta == Decimal("1")
+
+
+def test_mixed_candidate_identities_on_one_side_fail_closed() -> None:
+    contract = _contract()
+    baseline = (
+        _obs(
+            contract,
+            candidate_id="b1",
+            metric_id="quality.score",
+            observation_id="o1",
+            value=1,
+        ),
+        _obs(
+            contract,
+            candidate_id="b2",
+            metric_id="quality.score",
+            observation_id="o2",
+            value=2,
+        ),
+    )
+    candidate = (
+        _obs(
+            contract,
+            candidate_id="c",
+            metric_id="quality.score",
+            observation_id="o1",
+            value=3,
+        ),
+        _obs(
+            contract,
+            candidate_id="c",
+            metric_id="quality.score",
+            observation_id="o2",
+            value=4,
+        ),
+    )
+    with pytest.raises(StabilityError, match="one candidate identity"):
+        paired_resample_stability(
+            baseline=baseline,
+            candidate=candidate,
+            metric_contract=contract,
+            metric_id="quality.score",
+            config=StabilityConfig("mean", 10, 2, seed=1),
+        )

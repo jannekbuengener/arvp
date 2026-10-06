@@ -183,6 +183,7 @@ def _index_side(
     expected_fp = metric_contract.fingerprint()
     indexed: dict[str, Observation] = {}
     partition_fp: str | None = None
+    candidate_fp: str | None = None
     for observation in observations:
         if type(observation) is not Observation:
             raise StabilityError(f"{side} must contain Observation instances")
@@ -196,6 +197,12 @@ def _index_side(
             partition_fp = observation.partition_fingerprint
         elif observation.partition_fingerprint != partition_fp:
             raise StabilityError(f"{side} observations must share one partition")
+        if candidate_fp is None:
+            candidate_fp = observation.candidate_fingerprint
+        elif observation.candidate_fingerprint != candidate_fp:
+            raise StabilityError(
+                f"{side} observations must share one candidate identity"
+            )
         if observation.observation_id in indexed:
             raise StabilityError(
                 f"duplicate {side} observation_id: {observation.observation_id}"
