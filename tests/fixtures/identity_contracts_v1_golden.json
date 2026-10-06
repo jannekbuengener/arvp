@@ -1,0 +1,47 @@
+{
+  "canonical_contract_version": "arvp.canonical.v2",
+  "vectors": [
+    {
+      "name": "ordered_dataset",
+      "kind": "dataset",
+      "records": [{"id": "a"}, {"id": "b"}],
+      "fields": ["id"],
+      "ordering": "ordered",
+      "expected_json": "{\"fields\":[\"id\"],\"ordering\":\"ordered\",\"records\":[{\"id\":\"a\"},{\"id\":\"b\"}],\"schema_version\":\"arvp.dataset-content.v2\"}",
+      "expected_fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+    },
+    {
+      "name": "unordered_dataset",
+      "kind": "dataset",
+      "records": [{"id": "b"}, {"id": "a"}],
+      "fields": ["id"],
+      "ordering": "unordered",
+      "expected_json": "{\"fields\":[\"id\"],\"ordering\":\"unordered\",\"records\":[{\"id\":\"a\"},{\"id\":\"b\"}],\"schema_version\":\"arvp.dataset-content.v2\"}",
+      "expected_fingerprint": "27a9b38746cd74f2b3698e3c25b36a70905a73ba16ab3cd025235ee5cade041c"
+    },
+    {
+      "name": "candidate",
+      "kind": "candidate",
+      "candidate_id": "candidate-a",
+      "implementation_id": "impl-a",
+      "revision": "r1",
+      "configuration": {"beta": 2, "alpha": 1},
+      "expected_json": "{\"candidate_id\":\"candidate-a\",\"configuration\":{\"alpha\":1,\"beta\":2},\"contract_version\":\"arvp.candidate.v1\",\"implementation_id\":\"impl-a\",\"revision\":\"r1\"}",
+      "expected_fingerprint": "fe26d54f7dfba934d2f163bc3b945c2e2e7bc22d7a03a90ecdafaabfee5f9ad8"
+    },
+    {
+      "name": "partition",
+      "kind": "partition",
+      "partition_id": "calibration",
+      "role": "calibration",
+      "content_identity": {
+        "schema_version": "arvp.dataset-content.v2",
+        "ordering": "ordered",
+        "record_count": 2,
+        "fingerprint": "db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db"
+      },
+      "expected_json": "{\"content_identity\":{\"fingerprint\":\"db694da844b63ce48e0fc1022eded0e5f3e56a272158b5b728af0d6247da28db\",\"ordering\":\"ordered\",\"record_count\":2,\"schema_version\":\"arvp.dataset-content.v2\"},\"contract_version\":\"arvp.evaluation-partition.v1\",\"partition_id\":\"calibration\",\"role\":\"calibration\"}",
+      "expected_fingerprint": "48f61178fbe96f0a6a3b255f03cc86a7c95df1378fde57686d4fb9f002ede10e"
+    }
+  ]
+}

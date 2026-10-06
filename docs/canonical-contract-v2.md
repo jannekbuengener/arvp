@@ -247,12 +247,16 @@ Negative cases: non-finite float/Decimal, reserved `$arvp` key, non-string keys,
 
 **Canonical intermediate data (`$arvp` extension) never leaves `canonical.py`.** Dataset layer stores original portable values; canonicalization happens at fingerprint time.
 
-### Changes from v0.1
+### Dataset content v2 integration
 
-1. **Removed** `_normalize_content_value()` (Decimal→float conversion, `str(key)` coercion)
-2. **`DatasetRequest.__post_init__`**: Validates keys (exact `str`, not `"$arvp"`), copies originals, validates canonicalizability via `canonical_json_dumps()`
-3. **`identify_content()`**: Original values in payload; sort key uses `canonical_json_dumps(record[order_by])` + record hash tiebreaker
-4. **Ordering semantics**: Canonical JSON total order (not numeric/lexical). Example: `1`, `2`, `10` sort as `1`, `10`, `2` (JSON string order)
+1. `DatasetRequest` defensively copies validated portable parameters; request identity remains distinct from loaded-content identity.
+2. `DatasetContentIdentity` is self-validating and records `schema_version`, explicit `ordering`, non-negative `record_count`, and a strict fingerprint.
+3. `identify_content(records, *, fields, ordering)` requires explicit `ordered` or `unordered` semantics; the former preserves input order and the latter sorts full selected records by Canonical-v2 JSON.
+4. Duplicate records are preserved deterministically. Empty datasets are valid when the selected field contract is explicit.
+5. Fingerprint input includes the selected field names so different empty projections do not collapse to one identity.
+6. Callers normalize domain semantics before identity calculation; ARVP performs no domain-specific type coercion.
+
+See `docs/identity-contracts-v1.md` for the successor-facing dataset/candidate/partition contract.
 
 ---
 
@@ -264,7 +268,8 @@ Negative cases: non-finite float/Decimal, reserved `$arvp` key, non-string keys,
 - Verifies all 31 positive vectors: exact `expected_json` and `expected_fingerprint`
 - Verifies all 18 negative vectors: expected `CanonicalizationError`
 - Runs from checkout; `arvp` imported from installed wheel in package job
-- No test-package runtime dependency; fixture not in wheel
+- Also verifies frozen dataset/candidate/partition identity goldens from `identity_contracts_v1_golden.json`
+- No test-package runtime dependency; fixtures are not bundled into the wheel
 
 ### CI Matrix
 
@@ -286,7 +291,7 @@ Negative cases: non-finite float/Decimal, reserved `$arvp` key, non-string keys,
 | `len(fp)==64` validator | Strict lowercase hex | Update external validators |
 | `IntEnum`/`dict` subclass accepted | Rejected | Use explicit portable values |
 
-**Live Consumers**: None (no committed fingerprint fixtures, registry local-only).
+**Compatibility note**: Canonical v2 is now consumed by committed dataset/candidate/partition identity goldens. Any future canonical change requires an intentional fingerprint migration.
 
 ---
 
@@ -296,6 +301,7 @@ Negative cases: non-finite float/Decimal, reserved `$arvp` key, non-string keys,
 |------|------|
 | `src/arvp/canonical.py` | Core implementation |
 | `src/arvp/datasets.py` | Dataset request/content identity (uses canonical) |
+| `src/arvp/identities.py` | Candidate and evaluation-partition identities |
 | `src/arvp/provenance.py` | Run provenance/registry (uses canonical) |
 | `src/arvp/evaluation.py` | Evaluation/gates (uses canonical) |
 | `src/arvp/scenarios.py` | Scenario orchestration (uses canonical) |
