@@ -153,6 +153,10 @@ def run_evaluation_plan(
     """
     if not isinstance(plan, EvaluationPlan):
         raise EvaluationError("plan must be an EvaluationPlan")
+    if unexpected_exceptions not in {"raise", "capture"}:
+        raise EvaluationError(
+            "unexpected_exceptions must be either 'raise' or 'capture'"
+        )
     results: list[WindowResult] = []
     for window in plan.windows:
         try:

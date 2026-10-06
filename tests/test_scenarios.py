@@ -168,3 +168,15 @@ def test_failure_evidence_codes() -> None:
     for code in codes:
         evidence = FailureEvidence(code=code)
         assert evidence.code == code
+
+
+def test_run_scenarios_rejects_unknown_exception_policy_before_runner() -> None:
+    scenario = Scenario("one", "Only", {})
+
+    with pytest.raises(ScenarioError, match="unexpected_exceptions"):
+        run_scenarios(
+            [scenario],
+            runner=lambda item: ScenarioResult(item.scenario_id, 0, metrics={}),
+            clock=_fixed_clock,
+            unexpected_exceptions="ignore",  # type: ignore[arg-type]
+        )

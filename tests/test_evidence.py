@@ -239,3 +239,34 @@ def test_validate_portable_metadata_rejects_surrogate_in_value() -> None:
 def test_validate_portable_metadata_path_object_rejected() -> None:
     with pytest.raises(PortableEvidenceError, match="not canonicalizable"):
         validate_portable_metadata({"path": Path("some/path")})
+
+
+def test_failure_evidence_validates_metadata_at_construction() -> None:
+    with pytest.raises(PortableEvidenceError, match="forbidden key"):
+        FailureEvidence.invalid_input(metadata={"token": "secret"})
+
+    with pytest.raises(PortableEvidenceError, match="not canonicalizable"):
+        FailureEvidence.invalid_input(metadata={"value": Path("local/file")})
+
+
+def test_failure_evidence_defensively_copies_nested_metadata() -> None:
+    original = {"nested": {"reason": "stable"}}
+    evidence = FailureEvidence.invalid_input(metadata=original)
+
+    original["nested"]["reason"] = "mutated"
+    assert evidence.metadata == {"nested": {"reason": "stable"}}
+
+    projected = evidence.to_dict()
+    projected["metadata"]["nested"]["reason"] = "changed"  # type: ignore[index]
+    assert evidence.metadata == {"nested": {"reason": "stable"}}
+
+
+def test_failure_evidence_rejects_non_token_stage_and_exception_type() -> None:
+    with pytest.raises(PortableEvidenceError, match="stage"):
+        FailureEvidence(code="invalid_input", stage=r"C:\Users\alice")
+
+    with pytest.raises(PortableEvidenceError, match="exception_type"):
+        FailureEvidence(
+            code="unexpected_exception",
+            exception_type="File/NotFoundError",
+        )

@@ -14,6 +14,8 @@ Key design principles:
 
 from __future__ import annotations
 
+import copy
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal, get_args
@@ -34,6 +36,8 @@ FailureCode = Literal[
 ]
 
 _FAILURE_CODES = frozenset(get_args(FailureCode))
+_EXCEPTION_TYPE_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_STAGE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$")
 
 
 class PortableEvidenceError(ValueError):
@@ -57,21 +61,25 @@ class FailureEvidence:
         if not isinstance(self.code, str) or self.code not in _FAILURE_CODES:
             raise PortableEvidenceError(f"invalid failure code: {self.code!r}")
         if self.exception_type is not None:
-            if not isinstance(self.exception_type, str) or not self.exception_type:
+            if not isinstance(
+                self.exception_type, str
+            ) or not _EXCEPTION_TYPE_RE.fullmatch(self.exception_type):
                 raise PortableEvidenceError(
-                    "exception_type must be non-empty string or None"
-                )
-            if "." in self.exception_type:
-                raise PortableEvidenceError(
-                    "exception_type must be simple class name, not qualified"
+                    "exception_type must be a simple class name token or None"
                 )
         if self.stage is not None:
-            if not isinstance(self.stage, str) or not self.stage:
-                raise PortableEvidenceError("stage must be non-empty string or None")
+            if not isinstance(self.stage, str) or not _STAGE_RE.fullmatch(self.stage):
+                raise PortableEvidenceError(
+                    "stage must be a non-empty string using 1-64 portable token characters or None"
+                )
         if self.metadata is not None:
             if not isinstance(self.metadata, Mapping):
                 raise PortableEvidenceError("metadata must be a mapping or None")
-            # Canonicalizability is validated at projection time via validate_portable_metadata
+            object.__setattr__(
+                self,
+                "metadata",
+                validate_portable_metadata(self.metadata, field="failure.metadata"),
+            )
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {"code": self.code}
@@ -80,7 +88,7 @@ class FailureEvidence:
         if self.stage is not None:
             payload["stage"] = self.stage
         if self.metadata is not None:
-            payload["metadata"] = dict(self.metadata)
+            payload["metadata"] = copy.deepcopy(dict(self.metadata))
         return payload
 
     @classmethod
@@ -220,4 +228,4 @@ def validate_portable_metadata(
 
     walk(copied)
 
-    return copied
+    return copy.deepcopy(copied)

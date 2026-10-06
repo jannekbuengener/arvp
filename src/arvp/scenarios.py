@@ -171,6 +171,8 @@ def run_scenarios(
     """
     if not scenarios:
         raise ScenarioError("scenarios must not be empty")
+    if unexpected_exceptions not in {"raise", "capture"}:
+        raise ScenarioError("unexpected_exceptions must be either 'raise' or 'capture'")
     if group_id is not None and not _GROUP_ID_RE.fullmatch(group_id):
         raise ScenarioError("group_id must use 1-64 letters, digits, '_' or '-'")
     seen: set[str] = set()

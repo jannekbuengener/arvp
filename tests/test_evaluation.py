@@ -143,3 +143,14 @@ def test_window_result_rejects_failure_on_success() -> None:
 def test_window_result_requires_failure_on_failure() -> None:
     with pytest.raises(EvaluationError, match="failed result requires a failure"):
         WindowResult("test", False)
+
+
+def test_run_evaluation_plan_rejects_unknown_exception_policy_before_runner() -> None:
+    plan = EvaluationPlan("p", (EvaluationWindow("one", 0, 1),))
+
+    with pytest.raises(EvaluationError, match="unexpected_exceptions"):
+        run_evaluation_plan(
+            plan,
+            runner=lambda window: WindowResult(window.window_id, True, metrics={}),
+            unexpected_exceptions="ignore",  # type: ignore[arg-type]
+        )
