@@ -20,6 +20,7 @@ from arvp.evidence import (
     PortableEvidenceError,
     validate_portable_metadata,
 )
+from arvp.metrics import MetricContract, MetricContractError, MetricValue
 
 _GROUP_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
@@ -80,8 +81,9 @@ class Scenario:
 class ScenarioResult:
     scenario_id: str
     exit_code: int
-    metrics: Mapping[str, Any] | None = None
+    metrics: tuple[MetricValue, ...] | None = None
     failure: FailureEvidence | None = None
+    metric_contract: MetricContract | None = None
 
     def __post_init__(self) -> None:
         _require_text(self.scenario_id, "scenario_id")
@@ -93,16 +95,19 @@ class ScenarioResult:
             raise ScenarioError("failed scenarios require a failure")
         if self.failure is not None and not isinstance(self.failure, FailureEvidence):
             raise ScenarioError("failure must be a FailureEvidence instance")
-        if self.metrics is not None:
-            if not isinstance(self.metrics, Mapping):
-                raise ScenarioError("metrics must be a mapping")
-            metrics = copy.deepcopy(dict(self.metrics))
-            _assert_evidence_safe(metrics)
-            try:
-                canonical_json_dumps(metrics)
-            except CanonicalizationError as exc:
-                raise ScenarioError(f"metrics not canonicalizable: {exc}") from exc
-            object.__setattr__(self, "metrics", metrics)
+        if self.metrics is None:
+            if self.metric_contract is not None:
+                raise ScenarioError("metric_contract requires metrics")
+            return
+        if type(self.metrics) is not tuple:
+            raise ScenarioError("metrics must be a tuple of MetricValue instances")
+        if type(self.metric_contract) is not MetricContract:
+            raise ScenarioError("metrics require a metric_contract")
+        try:
+            validated = self.metric_contract.validate_values(self.metrics)
+        except MetricContractError as exc:
+            raise ScenarioError(str(exc)) from exc
+        object.__setattr__(self, "metrics", validated)
 
     @property
     def succeeded(self) -> bool:
@@ -114,7 +119,8 @@ class ScenarioResult:
             "scenario_id": self.scenario_id,
         }
         if self.metrics is not None:
-            payload["metrics"] = dict(self.metrics)
+            payload["metric_contract_fingerprint"] = self.metric_contract.fingerprint()
+            payload["metrics"] = [value.to_dict() for value in self.metrics]
         if self.failure is not None:
             payload["failure"] = self.failure.to_dict()
         return payload

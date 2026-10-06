@@ -29,6 +29,20 @@ from arvp.identities import (
     IdentityContractError,
     PartitionRole,
 )
+from arvp.metrics import (
+    METRIC_CONTRACT_VERSION,
+    METRIC_DEFINITION_CONTRACT_VERSION,
+    METRIC_VALUE_CONTRACT_VERSION,
+    OBSERVATION_CONTRACT_VERSION,
+    MetricContract,
+    MetricContractError,
+    MetricDefinition,
+    MetricDirection,
+    MetricValue,
+    MetricValueStatus,
+    Observation,
+    validate_observations,
+)
 from arvp.provenance import RunProvenance, RunRecord
 
 __all__ = [
@@ -37,6 +51,10 @@ __all__ = [
     "CONTENT_IDENTITY_SCHEMA_VERSION",
     "EVALUATION_PARTITION_CONTRACT_VERSION",
     "FAILURE_EVIDENCE_VERSION",
+    "METRIC_CONTRACT_VERSION",
+    "METRIC_DEFINITION_CONTRACT_VERSION",
+    "METRIC_VALUE_CONTRACT_VERSION",
+    "OBSERVATION_CONTRACT_VERSION",
     "CandidateSpec",
     "CanonicalizationError",
     "DatasetContentIdentity",
@@ -47,6 +65,13 @@ __all__ = [
     "FailureEvidence",
     "FingerprintFormatError",
     "IdentityContractError",
+    "MetricContract",
+    "MetricContractError",
+    "MetricDefinition",
+    "MetricDirection",
+    "MetricValue",
+    "MetricValueStatus",
+    "Observation",
     "PartitionRole",
     "PortableEvidenceError",
     "RunProvenance",
@@ -54,5 +79,6 @@ __all__ = [
     "canonical_hash",
     "canonical_json_dumps",
     "validate_fingerprint",
+    "validate_observations",
     "validate_portable_metadata",
 ]
