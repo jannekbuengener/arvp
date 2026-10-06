@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import random
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -47,8 +48,15 @@ def _nonzero_span(value: Decimal) -> tuple[int, int] | None:
     return value.adjusted(), exponent
 
 
-def _precision_for_values(*groups: Sequence[Decimal]) -> int:
-    """Precision covering MSD→LSD span of non-zero operands (+ slack)."""
+def _carry_digits(term_count: int) -> int:
+    """Extra digits for same-sign accumulation of ``term_count`` values."""
+    if term_count <= 1:
+        return 0
+    return math.ceil(math.log10(term_count)) + 1
+
+
+def _precision_for_values(*groups: Sequence[Decimal], term_count: int) -> int:
+    """Precision covering MSD→LSD span plus carry growth (+ slack)."""
     spans = [
         span
         for group in groups
@@ -63,6 +71,7 @@ def _precision_for_values(*groups: Sequence[Decimal]) -> int:
         - min(exponent for _, exponent in spans)
         + 1
         + _EXACT_RELATION_SLACK
+        + _carry_digits(term_count)
     )
     if needed > MAX_PREC:
         raise StabilityError("stability arithmetic exceeds the supported decimal range")
@@ -392,7 +401,10 @@ def paired_resample_stability(
     try:
         baseline_values = [item[0] for item in pairs]
         candidate_values = [item[1] for item in pairs]
-        prec = _precision_for_values(baseline_values, candidate_values)
+        term_count = max(len(pairs), config.blocks_per_sample)
+        prec = _precision_for_values(
+            baseline_values, candidate_values, term_count=term_count
+        )
         with localcontext(_pinned_context(prec=prec)):
             # Aggregate pair deltas under operand-sized precision so large shared
             # magnitudes cannot cancel the measured change.

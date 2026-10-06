@@ -656,6 +656,79 @@ def test_crossed_large_magnitude_pair_deltas_preserve_low_order_digits() -> None
     assert result.favors_candidate is True
 
 
+def test_many_same_sign_large_deltas_preserve_carry_digits() -> None:
+    contract = _contract()
+    baseline = []
+    candidate = []
+    # 1000 pairs of +1e100 delta, then +1, then 1000 pairs of -1e100 delta.
+    for i in range(1000):
+        baseline.append(
+            _obs(
+                contract,
+                candidate_id="b",
+                metric_id="quality.score",
+                observation_id=f"a{i:04d}",
+                value=Decimal("0"),
+            )
+        )
+        candidate.append(
+            _obs(
+                contract,
+                candidate_id="c",
+                metric_id="quality.score",
+                observation_id=f"a{i:04d}",
+                value=Decimal("1e100"),
+            )
+        )
+    baseline.append(
+        _obs(
+            contract,
+            candidate_id="b",
+            metric_id="quality.score",
+            observation_id="mid",
+            value=Decimal("0"),
+        )
+    )
+    candidate.append(
+        _obs(
+            contract,
+            candidate_id="c",
+            metric_id="quality.score",
+            observation_id="mid",
+            value=Decimal("1"),
+        )
+    )
+    for i in range(1000):
+        baseline.append(
+            _obs(
+                contract,
+                candidate_id="b",
+                metric_id="quality.score",
+                observation_id=f"z{i:04d}",
+                value=Decimal("1e100"),
+            )
+        )
+        candidate.append(
+            _obs(
+                contract,
+                candidate_id="c",
+                metric_id="quality.score",
+                observation_id=f"z{i:04d}",
+                value=Decimal("0"),
+            )
+        )
+    result = paired_resample_stability(
+        baseline=tuple(baseline),
+        candidate=tuple(candidate),
+        metric_contract=contract,
+        metric_id="quality.score",
+        config=StabilityConfig("sum", 5, 2001, seed=1),
+    )
+    assert result.status == "complete"
+    assert result.observed_delta == Decimal("1")
+    assert result.favors_candidate is True
+
+
 def test_incomplete_reports_partition_and_missing_pair_reasons() -> None:
     contract = _contract()
     left_partition = _partition("left")
