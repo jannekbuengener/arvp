@@ -1,0 +1,442 @@
+"""Portable baseline comparison and deterministic gate contracts."""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+from dataclasses import dataclass
+from decimal import Decimal
+from typing import Any, Literal
+
+from arvp.canonical import canonical_hash
+from arvp.metrics import (
+    MetricContract,
+    MetricContractError,
+    MetricDirection,
+    MetricValueStatus,
+    Observation,
+)
+
+METRIC_COMPARISON_CONTRACT_VERSION = "arvp.metric-comparison.v1"
+
+ComparisonStatus = Literal["complete", "incomplete", "not_applicable"]
+ComparisonReason = Literal[
+    "missing_baseline",
+    "missing_candidate",
+    "metric_contract_mismatch",
+    "partition_mismatch",
+    "unknown_value",
+    "not_applicable",
+]
+RelativeDeltaReason = Literal["baseline_zero"]
+DirectionResult = Literal["improved", "regressed", "equal"]
+
+_REASON_ORDER: tuple[ComparisonReason, ...] = (
+    "missing_baseline",
+    "missing_candidate",
+    "metric_contract_mismatch",
+    "partition_mismatch",
+    "unknown_value",
+    "not_applicable",
+)
+_NUMERIC_STATUSES = frozenset({"measured", "derived"})
+
+
+class GateContractError(ValueError):
+    """Raised when comparison/gate contracts are structurally malformed."""
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class MetricComparison:
+    metric_id: str
+    direction: MetricDirection
+    unit: str
+    required: bool
+    observation_id: str
+    metric_contract_fingerprint: str
+    baseline_candidate_fingerprint: str | None
+    candidate_fingerprint: str | None
+    baseline_partition_id: str | None
+    candidate_partition_id: str | None
+    baseline_partition_fingerprint: str | None
+    candidate_partition_fingerprint: str | None
+    baseline_metric_contract_fingerprint: str | None
+    candidate_metric_contract_fingerprint: str | None
+    baseline_status: MetricValueStatus | None
+    candidate_status: MetricValueStatus | None
+    baseline_value: Decimal | None
+    candidate_value: Decimal | None
+    baseline_compatible: bool
+    candidate_compatible: bool
+    absolute_delta: Decimal | None
+    relative_delta: Decimal | None
+    relative_delta_reason: RelativeDeltaReason | None
+    directional_relative_delta: Decimal | None
+    direction_result: DirectionResult | None
+    status: ComparisonStatus
+    reasons: tuple[ComparisonReason, ...]
+    contract_version: str
+
+    @classmethod
+    def _create(
+        cls,
+        *,
+        metric_id: str,
+        direction: MetricDirection,
+        unit: str,
+        required: bool,
+        observation_id: str,
+        metric_contract_fingerprint: str,
+        baseline_candidate_fingerprint: str | None,
+        candidate_fingerprint: str | None,
+        baseline_partition_id: str | None,
+        candidate_partition_id: str | None,
+        baseline_partition_fingerprint: str | None,
+        candidate_partition_fingerprint: str | None,
+        baseline_metric_contract_fingerprint: str | None,
+        candidate_metric_contract_fingerprint: str | None,
+        baseline_status: MetricValueStatus | None,
+        candidate_status: MetricValueStatus | None,
+        baseline_value: Decimal | None,
+        candidate_value: Decimal | None,
+        baseline_compatible: bool,
+        candidate_compatible: bool,
+        absolute_delta: Decimal | None,
+        relative_delta: Decimal | None,
+        relative_delta_reason: RelativeDeltaReason | None,
+        directional_relative_delta: Decimal | None,
+        direction_result: DirectionResult | None,
+        status: ComparisonStatus,
+        reasons: tuple[ComparisonReason, ...],
+    ) -> MetricComparison:
+        instance = object.__new__(cls)
+        values = {
+            "metric_id": metric_id,
+            "direction": direction,
+            "unit": unit,
+            "required": required,
+            "observation_id": observation_id,
+            "metric_contract_fingerprint": metric_contract_fingerprint,
+            "baseline_candidate_fingerprint": baseline_candidate_fingerprint,
+            "candidate_fingerprint": candidate_fingerprint,
+            "baseline_partition_id": baseline_partition_id,
+            "candidate_partition_id": candidate_partition_id,
+            "baseline_partition_fingerprint": baseline_partition_fingerprint,
+            "candidate_partition_fingerprint": candidate_partition_fingerprint,
+            "baseline_metric_contract_fingerprint": baseline_metric_contract_fingerprint,
+            "candidate_metric_contract_fingerprint": candidate_metric_contract_fingerprint,
+            "baseline_status": baseline_status,
+            "candidate_status": candidate_status,
+            "baseline_value": baseline_value,
+            "candidate_value": candidate_value,
+            "baseline_compatible": baseline_compatible,
+            "candidate_compatible": candidate_compatible,
+            "absolute_delta": absolute_delta,
+            "relative_delta": relative_delta,
+            "relative_delta_reason": relative_delta_reason,
+            "directional_relative_delta": directional_relative_delta,
+            "direction_result": direction_result,
+            "status": status,
+            "reasons": reasons,
+            "contract_version": METRIC_COMPARISON_CONTRACT_VERSION,
+        }
+        for field, value in values.items():
+            object.__setattr__(instance, field, value)
+        return instance
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "absolute_delta": self.absolute_delta,
+            "baseline_candidate_fingerprint": self.baseline_candidate_fingerprint,
+            "baseline_compatible": self.baseline_compatible,
+            "baseline_metric_contract_fingerprint": self.baseline_metric_contract_fingerprint,
+            "baseline_partition_fingerprint": self.baseline_partition_fingerprint,
+            "baseline_partition_id": self.baseline_partition_id,
+            "baseline_status": self.baseline_status,
+            "baseline_value": self.baseline_value,
+            "candidate_compatible": self.candidate_compatible,
+            "candidate_fingerprint": self.candidate_fingerprint,
+            "candidate_metric_contract_fingerprint": self.candidate_metric_contract_fingerprint,
+            "candidate_partition_fingerprint": self.candidate_partition_fingerprint,
+            "candidate_partition_id": self.candidate_partition_id,
+            "candidate_status": self.candidate_status,
+            "candidate_value": self.candidate_value,
+            "contract_version": self.contract_version,
+            "direction": self.direction,
+            "direction_result": self.direction_result,
+            "directional_relative_delta": self.directional_relative_delta,
+            "metric_contract_fingerprint": self.metric_contract_fingerprint,
+            "metric_id": self.metric_id,
+            "observation_id": self.observation_id,
+            "reasons": self.reasons,
+            "relative_delta": self.relative_delta,
+            "relative_delta_reason": self.relative_delta_reason,
+            "required": self.required,
+            "status": self.status,
+            "unit": self.unit,
+        }
+
+    def fingerprint(self) -> str:
+        return canonical_hash(self.to_dict())
+
+
+@dataclass(frozen=True, slots=True)
+class _SideScope:
+    observations: dict[tuple[str, str], Observation]
+    candidate_fingerprint: str | None
+    partition_id: str | None
+    partition_fingerprint: str | None
+    metric_contract_fingerprint: str | None
+
+
+def _normalize_side(
+    name: str,
+    observations: Sequence[Observation],
+    metric_contract: MetricContract,
+) -> _SideScope:
+    if isinstance(observations, (str, bytes)) or not isinstance(observations, Sequence):
+        raise GateContractError(f"{name} must be a sequence of Observation instances")
+    indexed: dict[tuple[str, str], Observation] = {}
+    candidate_fingerprints: set[str] = set()
+    partitions: set[tuple[str, str]] = set()
+    metric_contract_fingerprints: set[str] = set()
+    for observation in observations:
+        if type(observation) is not Observation:
+            raise GateContractError(f"{name} must contain Observation instances")
+        try:
+            metric_contract.definition(observation.metric.metric_id)
+        except MetricContractError as exc:
+            raise GateContractError(str(exc)) from exc
+        key = (observation.metric.metric_id, observation.observation_id)
+        if key in indexed:
+            raise GateContractError(
+                f"{name} contains duplicate observation key: {key!r}"
+            )
+        indexed[key] = observation
+        candidate_fingerprints.add(observation.candidate_fingerprint)
+        partitions.add((observation.partition_id, observation.partition_fingerprint))
+        metric_contract_fingerprints.add(observation.metric.metric_contract_fingerprint)
+    if len(candidate_fingerprints) > 1:
+        raise GateContractError(f"{name} must contain observations from one candidate")
+    if len(partitions) > 1:
+        raise GateContractError(f"{name} must contain observations from one partition")
+    if len(metric_contract_fingerprints) > 1:
+        raise GateContractError(
+            f"{name} must contain observations from one metric contract"
+        )
+    partition = next(iter(partitions), None)
+    return _SideScope(
+        observations=indexed,
+        candidate_fingerprint=next(iter(candidate_fingerprints), None),
+        partition_id=partition[0] if partition else None,
+        partition_fingerprint=partition[1] if partition else None,
+        metric_contract_fingerprint=next(iter(metric_contract_fingerprints), None),
+    )
+
+
+def _direction_result(
+    direction: MetricDirection, absolute_delta: Decimal
+) -> DirectionResult | None:
+    if direction == "neutral":
+        return None
+    if absolute_delta == 0:
+        return "equal"
+    if direction == "maximize":
+        return "improved" if absolute_delta > 0 else "regressed"
+    return "improved" if absolute_delta < 0 else "regressed"
+
+
+def compare_observation_scope(
+    *,
+    baseline: Sequence[Observation],
+    candidate: Sequence[Observation],
+    metric_contract: MetricContract,
+) -> tuple[MetricComparison, ...]:
+    """Compare one explicit baseline/candidate observation scope deterministically."""
+    if type(metric_contract) is not MetricContract:
+        raise GateContractError("metric_contract must be a MetricContract")
+    baseline_scope = _normalize_side("baseline", baseline, metric_contract)
+    candidate_scope = _normalize_side("candidate", candidate, metric_contract)
+    if not baseline_scope.observations and not candidate_scope.observations:
+        raise GateContractError("at least one observation is required")
+
+    expected_contract_fingerprint = metric_contract.fingerprint()
+    keys = sorted(set(baseline_scope.observations) | set(candidate_scope.observations))
+    comparisons: list[MetricComparison] = []
+
+    for metric_id, observation_id in keys:
+        definition = metric_contract.definition(metric_id)
+        baseline_observation = baseline_scope.observations.get(
+            (metric_id, observation_id)
+        )
+        candidate_observation = candidate_scope.observations.get(
+            (metric_id, observation_id)
+        )
+        baseline_metric = (
+            baseline_observation.metric if baseline_observation is not None else None
+        )
+        candidate_metric = (
+            candidate_observation.metric if candidate_observation is not None else None
+        )
+        baseline_metric_contract_fingerprint = (
+            baseline_metric.metric_contract_fingerprint
+            if baseline_metric is not None
+            else None
+        )
+        candidate_metric_contract_fingerprint = (
+            candidate_metric.metric_contract_fingerprint
+            if candidate_metric is not None
+            else None
+        )
+        baseline_compatible = (
+            baseline_observation is not None
+            and baseline_metric_contract_fingerprint == expected_contract_fingerprint
+        )
+        candidate_compatible = (
+            candidate_observation is not None
+            and candidate_metric_contract_fingerprint == expected_contract_fingerprint
+        )
+
+        reason_set: set[ComparisonReason] = set()
+        if baseline_observation is None:
+            reason_set.add("missing_baseline")
+        if candidate_observation is None:
+            reason_set.add("missing_candidate")
+        if (
+            baseline_observation is not None
+            and not baseline_compatible
+            or candidate_observation is not None
+            and not candidate_compatible
+        ):
+            reason_set.add("metric_contract_mismatch")
+        if baseline_observation is not None and candidate_observation is not None:
+            if (
+                baseline_observation.partition_id != candidate_observation.partition_id
+                or baseline_observation.partition_fingerprint
+                != candidate_observation.partition_fingerprint
+            ):
+                reason_set.add("partition_mismatch")
+
+        statuses = {
+            status
+            for status in (
+                baseline_metric.status if baseline_metric is not None else None,
+                candidate_metric.status if candidate_metric is not None else None,
+            )
+            if status is not None
+        }
+        if "unknown" in statuses:
+            reason_set.add("unknown_value")
+        if "not_applicable" in statuses:
+            reason_set.add("not_applicable")
+
+        incomplete_reasons = reason_set.intersection(
+            {
+                "missing_baseline",
+                "missing_candidate",
+                "metric_contract_mismatch",
+                "partition_mismatch",
+                "unknown_value",
+            }
+        )
+        if incomplete_reasons:
+            status: ComparisonStatus = "incomplete"
+        elif "not_applicable" in reason_set:
+            status = "not_applicable"
+        else:
+            status = "complete"
+
+        absolute_delta: Decimal | None = None
+        relative_delta: Decimal | None = None
+        relative_delta_reason: RelativeDeltaReason | None = None
+        directional_relative_delta: Decimal | None = None
+        direction_result: DirectionResult | None = None
+
+        if status == "complete":
+            if (
+                baseline_metric is None
+                or candidate_metric is None
+                or baseline_metric.status not in _NUMERIC_STATUSES
+                or candidate_metric.status not in _NUMERIC_STATUSES
+                or baseline_metric.value is None
+                or candidate_metric.value is None
+            ):
+                raise GateContractError(
+                    "complete comparison requires numeric metric values"
+                )
+            absolute_delta = candidate_metric.value - baseline_metric.value
+            direction_result = _direction_result(definition.direction, absolute_delta)
+            if baseline_metric.value == 0:
+                relative_delta_reason = "baseline_zero"
+            else:
+                relative_delta = absolute_delta / abs(baseline_metric.value)
+                if definition.direction == "maximize":
+                    directional_relative_delta = relative_delta
+                elif definition.direction == "minimize":
+                    directional_relative_delta = -relative_delta
+
+        reasons = tuple(reason for reason in _REASON_ORDER if reason in reason_set)
+        comparisons.append(
+            MetricComparison._create(
+                metric_id=metric_id,
+                direction=definition.direction,
+                unit=definition.unit,
+                required=definition.required,
+                observation_id=observation_id,
+                metric_contract_fingerprint=expected_contract_fingerprint,
+                baseline_candidate_fingerprint=(
+                    baseline_observation.candidate_fingerprint
+                    if baseline_observation is not None
+                    else None
+                ),
+                candidate_fingerprint=(
+                    candidate_observation.candidate_fingerprint
+                    if candidate_observation is not None
+                    else None
+                ),
+                baseline_partition_id=(
+                    baseline_observation.partition_id
+                    if baseline_observation is not None
+                    else None
+                ),
+                candidate_partition_id=(
+                    candidate_observation.partition_id
+                    if candidate_observation is not None
+                    else None
+                ),
+                baseline_partition_fingerprint=(
+                    baseline_observation.partition_fingerprint
+                    if baseline_observation is not None
+                    else None
+                ),
+                candidate_partition_fingerprint=(
+                    candidate_observation.partition_fingerprint
+                    if candidate_observation is not None
+                    else None
+                ),
+                baseline_metric_contract_fingerprint=baseline_metric_contract_fingerprint,
+                candidate_metric_contract_fingerprint=candidate_metric_contract_fingerprint,
+                baseline_status=(
+                    baseline_metric.status if baseline_metric is not None else None
+                ),
+                candidate_status=(
+                    candidate_metric.status if candidate_metric is not None else None
+                ),
+                baseline_value=(
+                    baseline_metric.value if baseline_metric is not None else None
+                ),
+                candidate_value=(
+                    candidate_metric.value if candidate_metric is not None else None
+                ),
+                baseline_compatible=baseline_compatible,
+                candidate_compatible=candidate_compatible,
+                absolute_delta=absolute_delta,
+                relative_delta=relative_delta,
+                relative_delta_reason=relative_delta_reason,
+                directional_relative_delta=directional_relative_delta,
+                direction_result=direction_result,
+                status=status,
+                reasons=reasons,
+            )
+        )
+
+    return tuple(comparisons)
