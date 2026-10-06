@@ -421,3 +421,100 @@ def test_config_fingerprint_changes_with_seed_and_aggregation() -> None:
     c = StabilityConfig("sum", 10, 2, seed=1)
     assert a.fingerprint() != b.fingerprint()
     assert a.fingerprint() != c.fingerprint()
+
+
+def test_partition_mismatch_is_incomplete() -> None:
+    contract = _contract()
+    left_partition = _partition("left")
+    right_partition = _partition("right")
+    baseline = (
+        _obs(
+            contract,
+            candidate_id="b",
+            metric_id="quality.score",
+            observation_id="o1",
+            value=1,
+            partition=left_partition,
+        ),
+    )
+    candidate = (
+        _obs(
+            contract,
+            candidate_id="c",
+            metric_id="quality.score",
+            observation_id="o1",
+            value=2,
+            partition=right_partition,
+        ),
+    )
+    result = paired_resample_stability(
+        baseline=baseline,
+        candidate=candidate,
+        metric_contract=contract,
+        metric_id="quality.score",
+        config=StabilityConfig("mean", 10, 1, seed=1),
+    )
+    assert result.status == "incomplete"
+    assert result.reasons == ("partition_mismatch",)
+    assert result.observed_delta is None
+
+
+def test_stability_arithmetic_ignores_ambient_decimal_context() -> None:
+    from decimal import getcontext
+
+    contract = _contract()
+    baseline = (
+        _obs(
+            contract,
+            candidate_id="b",
+            metric_id="quality.score",
+            observation_id="o1",
+            value=Decimal("1"),
+        ),
+        _obs(
+            contract,
+            candidate_id="b",
+            metric_id="quality.score",
+            observation_id="o2",
+            value=Decimal("3"),
+        ),
+    )
+    candidate = (
+        _obs(
+            contract,
+            candidate_id="c",
+            metric_id="quality.score",
+            observation_id="o1",
+            value=Decimal("2"),
+        ),
+        _obs(
+            contract,
+            candidate_id="c",
+            metric_id="quality.score",
+            observation_id="o2",
+            value=Decimal("4"),
+        ),
+    )
+    config = StabilityConfig("mean", 20, 2, seed=11)
+    previous = getcontext().prec
+    try:
+        getcontext().prec = 5
+        first = paired_resample_stability(
+            baseline=baseline,
+            candidate=candidate,
+            metric_contract=contract,
+            metric_id="quality.score",
+            config=config,
+        )
+        getcontext().prec = 28
+        second = paired_resample_stability(
+            baseline=baseline,
+            candidate=candidate,
+            metric_contract=contract,
+            metric_id="quality.score",
+            config=config,
+        )
+    finally:
+        getcontext().prec = previous
+    assert first == second
+    assert first.observed_delta == Decimal("1")
