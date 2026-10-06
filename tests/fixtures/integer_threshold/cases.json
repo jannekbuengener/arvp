@@ -1,0 +1,20 @@
+{
+  "domain": "integer_threshold_classification",
+  "description": "Deterministic non-audio/non-trading integer threshold fixture for ARVP v0.2 second-domain proof.",
+  "ground_truth_rule": "label = 1 if x >= 10 else 0",
+  "cases": [
+    {"id": "case-001", "x": 1, "expected_label": 0},
+    {"id": "case-002", "x": 4, "expected_label": 0},
+    {"id": "case-003", "x": 7, "expected_label": 0},
+    {"id": "case-004", "x": 9, "expected_label": 0},
+    {"id": "case-005", "x": 10, "expected_label": 1},
+    {"id": "case-006", "x": 12, "expected_label": 1},
+    {"id": "case-007", "x": 15, "expected_label": 1},
+    {"id": "case-008", "x": 20, "expected_label": 1}
+  ],
+  "candidates": {
+    "baseline": {"threshold": 8},
+    "improved": {"threshold": 10},
+    "regression": {"threshold": 5}
+  }
+}

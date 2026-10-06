@@ -338,6 +338,20 @@ def probe_evidence_bundle_schemas() -> None:
     assert bundle.evidence_fingerprint == payload["evidence_fingerprint"]
 
 
+def probe_integer_threshold_evaluation_input() -> None:
+    """Prove EvaluationInput schema asset is present after install."""
+    from arvp.adapters import EVALUATION_INPUT_CONTRACT_VERSION
+    from arvp.schemas import load_schema
+
+    assert EVALUATION_INPUT_CONTRACT_VERSION == "arvp.evaluation-input.v1"
+    schema = load_schema("evaluation_input_v1.json")
+    assert schema["properties"]["contract_version"]["const"] == (
+        "arvp.evaluation-input.v1"
+    )
+    assert "baseline_observations" in schema["properties"]
+    assert "candidate_observations" in schema["properties"]
+
+
 def main() -> int:
     probe_golden_vectors()
     probe_identity_contracts()
@@ -345,8 +359,10 @@ def main() -> int:
     probe_platform_repeatability()
     probe_gate_contracts()
     probe_evidence_bundle_schemas()
+    probe_integer_threshold_evaluation_input()
     print(
-        "platform smoke ok: canonical v2, identity, metric, gate, and evidence bundle verified"
+        "platform smoke ok: canonical v2, identity, metric, gate, evidence, "
+        "and evaluation-input verified"
     )
     return 0
 
