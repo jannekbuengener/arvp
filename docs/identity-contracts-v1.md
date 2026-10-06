@@ -64,6 +64,6 @@ Successor slices must use `EvaluationPartition` rather than defining new split/w
 
 ## Successor handoff
 
-Issue #7 must reference partition identity from this contract for per-observation evidence. Issue #9 must compose these dataset, candidate, and partition identities into `EvaluationSuite` and RunProvenance v2.
+Issue #7 references partition identity from this contract for per-observation evidence. Issue #9 composes these dataset, candidate, and partition identities into `EvaluationSuite` and RunProvenance v2 (`docs/provenance-contracts-v2.md`).
 
 Golden identity fixtures live at `tests/fixtures/identity_contracts_v1_golden.json` and are exercised by unit tests plus the cross-platform installed-wheel smoke probe.
