@@ -11,23 +11,12 @@ from arvp.canonical import (
     canonical_hash,
     canonical_json_dumps,
 )
+from arvp.evidence import (
+    PortableEvidenceError,
+    validate_portable_metadata,
+)
 
 CONTENT_IDENTITY_SCHEMA_VERSION = "arvp.dataset-content.v1"
-_FORBIDDEN_EVIDENCE_KEYS = frozenset(
-    {
-        "api_key",
-        "api_secret",
-        "authorization",
-        "connection_string",
-        "database_url",
-        "dsn",
-        "file_path",
-        "password",
-        "path",
-        "secret",
-        "token",
-    }
-)
 
 
 class DatasetIdentityError(ValueError):
@@ -40,34 +29,15 @@ def _require_text(value: object, field: str) -> str:
     return value.strip()
 
 
-def forbidden_evidence_keys(value: Any) -> tuple[str, ...]:
-    """Find key names that must never occur in portable evidence."""
-    found: set[str] = set()
-
-    def walk(node: Any) -> None:
-        if isinstance(node, Mapping):
-            for key, item in node.items():
-                key_text = str(key)
-                if key_text.casefold() in _FORBIDDEN_EVIDENCE_KEYS:
-                    found.add(key_text)
-                walk(item)
-        elif isinstance(node, Sequence) and not isinstance(
-            node, (str, bytes, bytearray)
-        ):
-            for item in node:
-                walk(item)
-
-    walk(value)
-    return tuple(sorted(found))
-
-
 def assert_evidence_safe(value: Any) -> None:
-    """Fail closed when evidence could include a path, secret, or DSN."""
-    forbidden = forbidden_evidence_keys(value)
-    if forbidden:
-        raise DatasetIdentityError(
-            "evidence contains forbidden key names: " + ", ".join(forbidden)
-        )
+    """Fail closed when evidence could include a path, secret, or DSN.
+
+    Delegates to the shared portable evidence boundary.
+    """
+    try:
+        validate_portable_metadata(value)
+    except PortableEvidenceError as exc:
+        raise DatasetIdentityError(str(exc)) from exc
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,7 +64,7 @@ class DatasetRequest:
         # Copy original portable values
         copied = dict(self.parameters)
 
-        # Evidence safety
+        # Evidence safety (shared boundary)
         assert_evidence_safe(copied)
 
         # Canonicalizability check (fails if any value not portable)

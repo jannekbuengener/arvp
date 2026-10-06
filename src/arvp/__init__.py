@@ -9,6 +9,13 @@ from arvp.canonical import (
     validate_fingerprint,
 )
 from arvp.datasets import DatasetContentIdentity, DatasetRequest
+from arvp.evidence import (
+    FAILURE_EVIDENCE_VERSION,
+    FailureCode,
+    FailureEvidence,
+    PortableEvidenceError,
+    validate_portable_metadata,
+)
 from arvp.provenance import RunProvenance, RunRecord
 
 __all__ = [
@@ -22,4 +29,9 @@ __all__ = [
     "validate_fingerprint",
     "CanonicalizationError",
     "FingerprintFormatError",
+    "FAILURE_EVIDENCE_VERSION",
+    "FailureCode",
+    "FailureEvidence",
+    "PortableEvidenceError",
+    "validate_portable_metadata",
 ]

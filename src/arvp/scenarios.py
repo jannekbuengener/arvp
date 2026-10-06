@@ -8,14 +8,18 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from arvp.canonical import (
     CanonicalizationError,
     canonical_hash,
     canonical_json_dumps,
 )
-from arvp.datasets import assert_evidence_safe
+from arvp.evidence import (
+    FailureEvidence,
+    PortableEvidenceError,
+    validate_portable_metadata,
+)
 
 _GROUP_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
@@ -34,6 +38,17 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _assert_evidence_safe(value: Any) -> None:
+    """Fail closed when evidence could include a path, secret, or DSN.
+
+    Delegates to the shared portable evidence boundary.
+    """
+    try:
+        validate_portable_metadata(value)
+    except PortableEvidenceError as exc:
+        raise ScenarioError(str(exc)) from exc
+
+
 @dataclass(frozen=True, slots=True)
 class Scenario:
     scenario_id: str
@@ -46,11 +61,7 @@ class Scenario:
         if not isinstance(self.parameters, Mapping):
             raise ScenarioError("parameters must be a mapping")
         parameters = copy.deepcopy(dict(self.parameters))
-        try:
-            assert_evidence_safe(parameters)
-        except ValueError as exc:
-            raise ScenarioError(str(exc)) from exc
-        # Canonicalizability check
+        _assert_evidence_safe(parameters)
         try:
             canonical_json_dumps(parameters)
         except CanonicalizationError as exc:
@@ -70,27 +81,23 @@ class ScenarioResult:
     scenario_id: str
     exit_code: int
     metrics: Mapping[str, Any] | None = None
-    failure_reason: str | None = None
+    failure: FailureEvidence | None = None
 
     def __post_init__(self) -> None:
         _require_text(self.scenario_id, "scenario_id")
         if isinstance(self.exit_code, bool) or not isinstance(self.exit_code, int):
             raise ScenarioError("exit_code must be an integer, not bool")
-        if self.exit_code == 0 and self.failure_reason is not None:
-            raise ScenarioError("successful scenarios cannot have a failure_reason")
-        if self.exit_code != 0 and self.failure_reason is None:
-            raise ScenarioError("failed scenarios require a failure_reason")
-        if self.failure_reason is not None:
-            _require_text(self.failure_reason, "failure_reason")
+        if self.exit_code == 0 and self.failure is not None:
+            raise ScenarioError("successful scenarios cannot have a failure")
+        if self.exit_code != 0 and self.failure is None:
+            raise ScenarioError("failed scenarios require a failure")
+        if self.failure is not None and not isinstance(self.failure, FailureEvidence):
+            raise ScenarioError("failure must be a FailureEvidence instance")
         if self.metrics is not None:
             if not isinstance(self.metrics, Mapping):
                 raise ScenarioError("metrics must be a mapping")
             metrics = copy.deepcopy(dict(self.metrics))
-            try:
-                assert_evidence_safe(metrics)
-            except ValueError as exc:
-                raise ScenarioError(str(exc)) from exc
-            # Canonicalizability check
+            _assert_evidence_safe(metrics)
             try:
                 canonical_json_dumps(metrics)
             except CanonicalizationError as exc:
@@ -108,8 +115,8 @@ class ScenarioResult:
         }
         if self.metrics is not None:
             payload["metrics"] = dict(self.metrics)
-        if self.failure_reason is not None:
-            payload["failure_reason"] = self.failure_reason
+        if self.failure is not None:
+            payload["failure"] = self.failure.to_dict()
         return payload
 
 
@@ -145,16 +152,27 @@ def build_group_id(scenario_ids: Sequence[str]) -> str:
     return f"sg-{fingerprint[:12]}"
 
 
+RunnerExceptionPolicy = Literal["raise", "capture"]
+
+
 def run_scenarios(
     scenarios: Sequence[Scenario],
     *,
     runner: Callable[[Scenario], ScenarioResult],
     group_id: str | None = None,
     clock: Callable[[], datetime] = _utc_now,
+    unexpected_exceptions: RunnerExceptionPolicy = "raise",
 ) -> ScenarioManifest:
-    """Run every declared scenario in order; unexpected runner errors are evidence."""
+    """Run every declared scenario in order.
+
+    Unexpected runner exceptions:
+    - "raise" (default): propagate the exception (fail-fast)
+    - "capture": convert to FailureEvidence with code "unexpected_exception"
+    """
     if not scenarios:
         raise ScenarioError("scenarios must not be empty")
+    if unexpected_exceptions not in {"raise", "capture"}:
+        raise ScenarioError("unexpected_exceptions must be either 'raise' or 'capture'")
     if group_id is not None and not _GROUP_ID_RE.fullmatch(group_id):
         raise ScenarioError("group_id must use 1-64 letters, digits, '_' or '-'")
     seen: set[str] = set()
@@ -174,11 +192,12 @@ def run_scenarios(
         try:
             result = runner(scenario)
         except Exception as exc:
-            detail = f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
+            if unexpected_exceptions == "raise":
+                raise
             result = ScenarioResult(
                 scenario_id=scenario.scenario_id,
                 exit_code=2,
-                failure_reason=f"runner raised unexpected exception: {detail}",
+                failure=FailureEvidence.from_unexpected_exception(exc, stage="runner"),
             )
         if not isinstance(result, ScenarioResult):
             raise ScenarioError("runner must return a ScenarioResult")
