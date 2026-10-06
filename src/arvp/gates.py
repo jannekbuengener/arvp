@@ -862,18 +862,18 @@ def _exact_relative_pass(
     direction: MetricDirection,
 ) -> bool:
     """Exact ``sign * (candidate - baseline) >= limit * |baseline|`` relation."""
-    _, candidate_digits, candidate_exp = candidate_value.as_tuple()
+    _, _, candidate_exp = candidate_value.as_tuple()
     _, baseline_digits, baseline_exp = baseline_value.as_tuple()
     _, limit_digits, _ = limit.as_tuple()
     # After contract validation, operands are finite: exponents are ints
     assert isinstance(candidate_exp, int), "exponent must be int for finite Decimal"
     assert isinstance(baseline_exp, int), "exponent must be int for finite Decimal"
+    # Exact subtraction needs digits from the highest MSD (adjusted exponent)
+    # through the lowest LSD (tuple exponent). Using tuple exponents for the
+    # high end under-sizes the span when coefficients are longer than one digit.
     difference_precision = (
-        max(candidate_exp, baseline_exp)
-        - min(
-            candidate_exp - len(candidate_digits) + 1,
-            baseline_exp - len(baseline_digits) + 1,
-        )
+        max(candidate_value.adjusted(), baseline_value.adjusted())
+        - min(candidate_exp, baseline_exp)
         + 1
         + _EXACT_RELATION_SLACK
     )

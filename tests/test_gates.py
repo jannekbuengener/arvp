@@ -1199,6 +1199,39 @@ def test_comparison_translates_subnormal_range_arithmetic_failures() -> None:
         )
 
 
+def test_exact_relative_pass_covers_adjusted_exponent_subtraction_span() -> None:
+    """Exact fallback must FAIL when candidate-baseline rounds away under too-small prec.
+
+    candidate - 1 < candidate, so minimum_improvement at threshold=candidate is FAIL.
+    """
+    from arvp.gates import GatePolicy, RelativeBaselineCriterion, evaluate_gate
+
+    contract = _contract()
+    large = Decimal("9" * 50 + "e100")
+    policy = GatePolicy(
+        "release.default",
+        contract,
+        (
+            RelativeBaselineCriterion(
+                "quality.relative",
+                "quality.score",
+                "minimum_improvement",
+                large,
+            ),
+        ),
+    )
+    comparison = _single_comparison(
+        contract,
+        metric_id="quality.score",
+        baseline_value=Decimal("1"),
+        candidate_value=large,
+    )
+    decision = evaluate_gate(
+        policy=policy, comparisons=(comparison,), metric_contract=contract
+    )
+    assert decision.verdict == "FAIL"
+
+
 def test_relative_threshold_verdict_is_exact_beyond_50_significant_digits() -> None:
     """Rounded relative-delta evidence must not flip high-precision thresholds."""
     from arvp.gates import GatePolicy, RelativeBaselineCriterion, evaluate_gate
