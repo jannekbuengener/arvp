@@ -596,3 +596,441 @@ def test_relative_criterion_rejects_unknown_mode(mode: object) -> None:
             mode,  # type: ignore[arg-type]
             Decimal("0.1"),
         )
+
+
+def _single_comparison(
+    contract: MetricContract,
+    *,
+    metric_id: str,
+    baseline_value: int | float | Decimal | None = None,
+    candidate_value: int | float | Decimal | None = None,
+    baseline_status: str = "measured",
+    candidate_status: str = "measured",
+    baseline_present: bool = True,
+    candidate_present: bool = True,
+    observation_id: str = "aggregate",
+):
+    partition = _partition()
+    baseline = (
+        (
+            _observation(
+                contract,
+                candidate_id="baseline",
+                partition=partition,
+                metric_id=metric_id,
+                status=baseline_status,
+                value=baseline_value,
+                observation_id=observation_id,
+            ),
+        )
+        if baseline_present
+        else ()
+    )
+    candidate = (
+        (
+            _observation(
+                contract,
+                candidate_id="candidate",
+                partition=partition,
+                metric_id=metric_id,
+                status=candidate_status,
+                value=candidate_value,
+                observation_id=observation_id,
+            ),
+        )
+        if candidate_present
+        else ()
+    )
+    return compare_observation_scope(
+        baseline=baseline, candidate=candidate, metric_contract=contract
+    )[0]
+
+
+def test_gate_decision_absolute_threshold_boundary_passes() -> None:
+    from arvp.gates import AbsoluteThresholdCriterion, GatePolicy, evaluate_gate
+
+    contract = _contract()
+    policy = GatePolicy(
+        "release.default",
+        contract,
+        (AbsoluteThresholdCriterion("quality", "quality.score", "gte", 100),),
+    )
+    comparison = _single_comparison(
+        contract, metric_id="quality.score", baseline_value=90, candidate_value=100
+    )
+
+    decision = evaluate_gate(
+        policy=policy, comparisons=(comparison,), metric_contract=contract
+    )
+
+    assert decision.verdict == "PASS"
+    assert decision.criteria[0].outcome == "pass"
+    assert decision.criteria[0].actual == Decimal("100")
+
+
+def test_gate_decision_absolute_threshold_can_pass_without_baseline() -> None:
+    from arvp.gates import AbsoluteThresholdCriterion, GatePolicy, evaluate_gate
+
+    contract = _contract()
+    policy = GatePolicy(
+        "release.default",
+        contract,
+        (AbsoluteThresholdCriterion("quality", "quality.score", "gte", 100),),
+    )
+    comparison = _single_comparison(
+        contract,
+        metric_id="quality.score",
+        candidate_value=110,
+        baseline_present=False,
+    )
+
+    decision = evaluate_gate(
+        policy=policy, comparisons=(comparison,), metric_contract=contract
+    )
+
+    assert comparison.status == "incomplete"
+    assert comparison.reasons == ("missing_baseline",)
+    assert decision.verdict == "PASS"
+    assert decision.criteria[0].outcome == "pass"
+
+
+def test_gate_verdict_relative_no_regression_respects_minimize_direction() -> None:
+    from arvp.gates import GatePolicy, RelativeBaselineCriterion, evaluate_gate
+
+    contract = _contract()
+    comparison = _single_comparison(
+        contract,
+        metric_id="error.rate",
+        baseline_value=10,
+        candidate_value=10.4,
+    )
+    passing = GatePolicy(
+        "release.pass",
+        contract,
+        (
+            RelativeBaselineCriterion(
+                "error.regression",
+                "error.rate",
+                "no_regression_beyond",
+                Decimal("0.05"),
+            ),
+        ),
+    )
+    failing = GatePolicy(
+        "release.fail",
+        contract,
+        (
+            RelativeBaselineCriterion(
+                "error.regression",
+                "error.rate",
+                "no_regression_beyond",
+                Decimal("0.03"),
+            ),
+        ),
+    )
+
+    assert comparison.directional_relative_delta == Decimal("-0.04")
+    assert (
+        evaluate_gate(
+            policy=passing, comparisons=(comparison,), metric_contract=contract
+        ).verdict
+        == "PASS"
+    )
+    assert (
+        evaluate_gate(
+            policy=failing, comparisons=(comparison,), metric_contract=contract
+        ).verdict
+        == "FAIL"
+    )
+
+
+def test_gate_verdict_minimum_improvement_accepts_exact_boundary() -> None:
+    from arvp.gates import GatePolicy, RelativeBaselineCriterion, evaluate_gate
+
+    contract = _contract()
+    comparison = _single_comparison(
+        contract,
+        metric_id="quality.score",
+        baseline_value=100,
+        candidate_value=105,
+    )
+    policy = GatePolicy(
+        "release.default",
+        contract,
+        (
+            RelativeBaselineCriterion(
+                "quality.improvement",
+                "quality.score",
+                "minimum_improvement",
+                Decimal("0.05"),
+            ),
+        ),
+    )
+
+    decision = evaluate_gate(
+        policy=policy, comparisons=(comparison,), metric_contract=contract
+    )
+
+    assert comparison.directional_relative_delta == Decimal("0.05")
+    assert decision.verdict == "PASS"
+
+
+def test_gate_verdict_missing_required_candidate_is_hold() -> None:
+    from arvp.gates import AbsoluteThresholdCriterion, GatePolicy, evaluate_gate
+
+    contract = _contract()
+    comparison = _single_comparison(
+        contract,
+        metric_id="quality.score",
+        baseline_value=100,
+        candidate_present=False,
+    )
+    policy = GatePolicy(
+        "release.default",
+        contract,
+        (AbsoluteThresholdCriterion("quality", "quality.score", "gte", 90),),
+    )
+
+    decision = evaluate_gate(
+        policy=policy, comparisons=(comparison,), metric_contract=contract
+    )
+
+    assert decision.verdict == "HOLD"
+    assert decision.criteria[0].outcome == "hold"
+    assert decision.criteria[0].reason == "missing_candidate"
+
+
+def test_gate_verdict_unknown_required_candidate_is_hold() -> None:
+    from arvp.gates import AbsoluteThresholdCriterion, GatePolicy, evaluate_gate
+
+    contract = _contract()
+    comparison = _single_comparison(
+        contract,
+        metric_id="quality.score",
+        baseline_value=100,
+        candidate_status="unknown",
+    )
+    policy = GatePolicy(
+        "release.default",
+        contract,
+        (AbsoluteThresholdCriterion("quality", "quality.score", "gte", 90),),
+    )
+
+    decision = evaluate_gate(
+        policy=policy, comparisons=(comparison,), metric_contract=contract
+    )
+
+    assert decision.verdict == "HOLD"
+    assert decision.criteria[0].reason == "unknown_value"
+
+
+def test_gate_verdict_optional_not_applicable_does_not_block_pass() -> None:
+    from arvp.gates import AbsoluteThresholdCriterion, GatePolicy, evaluate_gate
+
+    contract = _contract()
+    comparison = _single_comparison(
+        contract,
+        metric_id="bias",
+        baseline_status="not_applicable",
+        candidate_status="not_applicable",
+    )
+    policy = GatePolicy(
+        "release.default",
+        contract,
+        (AbsoluteThresholdCriterion("bias.limit", "bias", "lte", 1),),
+    )
+
+    decision = evaluate_gate(
+        policy=policy, comparisons=(comparison,), metric_contract=contract
+    )
+
+    assert decision.verdict == "PASS"
+    assert decision.criteria[0].outcome == "not_applicable"
+    assert decision.criteria[0].reason == "not_applicable"
+
+
+def test_gate_verdict_relative_baseline_zero_is_hold_when_required() -> None:
+    from arvp.gates import GatePolicy, RelativeBaselineCriterion, evaluate_gate
+
+    contract = _contract()
+    comparison = _single_comparison(
+        contract,
+        metric_id="quality.score",
+        baseline_value=0,
+        candidate_value=5,
+    )
+    policy = GatePolicy(
+        "release.default",
+        contract,
+        (
+            RelativeBaselineCriterion(
+                "quality.improvement",
+                "quality.score",
+                "minimum_improvement",
+                Decimal("0.01"),
+            ),
+        ),
+    )
+
+    decision = evaluate_gate(
+        policy=policy, comparisons=(comparison,), metric_contract=contract
+    )
+
+    assert decision.verdict == "HOLD"
+    assert decision.criteria[0].reason == "relative_delta_unavailable"
+
+
+def test_gate_verdict_measured_regression_is_fail() -> None:
+    from arvp.gates import GatePolicy, RelativeBaselineCriterion, evaluate_gate
+
+    contract = _contract()
+    comparison = _single_comparison(
+        contract,
+        metric_id="quality.score",
+        baseline_value=100,
+        candidate_value=90,
+    )
+    policy = GatePolicy(
+        "release.default",
+        contract,
+        (
+            RelativeBaselineCriterion(
+                "quality.regression",
+                "quality.score",
+                "no_regression_beyond",
+                Decimal("0.05"),
+            ),
+        ),
+    )
+
+    decision = evaluate_gate(
+        policy=policy, comparisons=(comparison,), metric_contract=contract
+    )
+
+    assert decision.verdict == "FAIL"
+    assert decision.criteria[0].outcome == "fail"
+
+
+def test_gate_verdict_fail_takes_precedence_over_hold() -> None:
+    from arvp.gates import (
+        AbsoluteThresholdCriterion,
+        GatePolicy,
+        RelativeBaselineCriterion,
+        evaluate_gate,
+    )
+
+    contract = _contract()
+    quality = _single_comparison(
+        contract,
+        metric_id="quality.score",
+        baseline_value=100,
+        candidate_value=80,
+    )
+    error = _single_comparison(
+        contract,
+        metric_id="error.rate",
+        baseline_value=10,
+        candidate_status="unknown",
+    )
+    policy = GatePolicy(
+        "release.default",
+        contract,
+        (
+            AbsoluteThresholdCriterion("quality.floor", "quality.score", "gte", 90),
+            RelativeBaselineCriterion(
+                "error.regression",
+                "error.rate",
+                "no_regression_beyond",
+                Decimal("0.05"),
+            ),
+        ),
+    )
+
+    decision = evaluate_gate(
+        policy=policy, comparisons=(quality, error), metric_contract=contract
+    )
+
+    assert [result.outcome for result in decision.criteria] == ["hold", "fail"]
+    assert decision.verdict == "FAIL"
+
+
+def test_gate_decision_results_are_sorted_by_criterion_id() -> None:
+    from arvp.gates import AbsoluteThresholdCriterion, GatePolicy, evaluate_gate
+
+    contract = _contract()
+    comparison = _single_comparison(
+        contract,
+        metric_id="quality.score",
+        baseline_value=100,
+        candidate_value=110,
+    )
+    policy = GatePolicy(
+        "release.default",
+        contract,
+        (
+            AbsoluteThresholdCriterion("z.floor", "quality.score", "gte", 90),
+            AbsoluteThresholdCriterion("a.ceiling", "quality.score", "lte", 120),
+        ),
+    )
+
+    decision = evaluate_gate(
+        policy=policy, comparisons=(comparison,), metric_contract=contract
+    )
+
+    assert [result.criterion.criterion_id for result in decision.criteria] == [
+        "a.ceiling",
+        "z.floor",
+    ]
+
+
+def test_gate_decision_rejects_foreign_metric_contract_binding() -> None:
+    from arvp.gates import AbsoluteThresholdCriterion, GatePolicy, evaluate_gate
+
+    contract = _contract()
+    foreign = MetricContract(
+        (
+            MetricDefinition("bias", "neutral", "1", False),
+            MetricDefinition("error.rate", "minimize", "1", True),
+            MetricDefinition("quality.score", "maximize", "percent", True),
+        )
+    )
+    policy = GatePolicy(
+        "release.default",
+        contract,
+        (AbsoluteThresholdCriterion("quality", "quality.score", "gte", 90),),
+    )
+
+    with pytest.raises(GateContractError, match="metric contract fingerprint"):
+        evaluate_gate(policy=policy, comparisons=(), metric_contract=foreign)
+
+
+def test_gate_decision_rejects_ambiguous_multiple_comparisons_for_metric() -> None:
+    from arvp.gates import AbsoluteThresholdCriterion, GatePolicy, evaluate_gate
+
+    contract = _contract()
+    first = _single_comparison(
+        contract,
+        metric_id="quality.score",
+        baseline_value=100,
+        candidate_value=110,
+        observation_id="item:001",
+    )
+    second = _single_comparison(
+        contract,
+        metric_id="quality.score",
+        baseline_value=100,
+        candidate_value=111,
+        observation_id="item:002",
+    )
+    policy = GatePolicy(
+        "release.default",
+        contract,
+        (AbsoluteThresholdCriterion("quality", "quality.score", "gte", 90),),
+    )
+
+    with pytest.raises(GateContractError, match="multiple comparisons"):
+        evaluate_gate(
+            policy=policy,
+            comparisons=(first, second),
+            metric_contract=contract,
+        )

@@ -608,3 +608,283 @@ def compare_observation_scope(
         )
 
     return tuple(comparisons)
+
+
+GATE_DECISION_CONTRACT_VERSION = "arvp.gate-decision.v1"
+GateVerdict = Literal["PASS", "FAIL", "HOLD"]
+CriterionOutcome = Literal["pass", "fail", "hold", "not_applicable"]
+CriterionReason = Literal[
+    "missing_comparison",
+    "missing_baseline",
+    "missing_candidate",
+    "unknown_value",
+    "not_applicable",
+    "incompatible_evidence",
+    "relative_delta_unavailable",
+]
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class CriterionResult:
+    criterion: GateCriterion
+    outcome: CriterionOutcome
+    actual: Decimal | None
+    comparison_fingerprint: str | None
+    reason: CriterionReason | None
+
+    @classmethod
+    def _create(
+        cls,
+        *,
+        criterion: GateCriterion,
+        outcome: CriterionOutcome,
+        actual: Decimal | None,
+        comparison_fingerprint: str | None,
+        reason: CriterionReason | None,
+    ) -> CriterionResult:
+        instance = object.__new__(cls)
+        object.__setattr__(instance, "criterion", criterion)
+        object.__setattr__(instance, "outcome", outcome)
+        object.__setattr__(instance, "actual", actual)
+        object.__setattr__(instance, "comparison_fingerprint", comparison_fingerprint)
+        object.__setattr__(instance, "reason", reason)
+        return instance
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "actual": self.actual,
+            "comparison_fingerprint": self.comparison_fingerprint,
+            "criterion": self.criterion.to_dict(),
+            "outcome": self.outcome,
+            "reason": self.reason,
+        }
+
+    def fingerprint(self) -> str:
+        return canonical_hash(self.to_dict())
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class GateDecision:
+    policy_fingerprint: str
+    metric_contract_fingerprint: str
+    verdict: GateVerdict
+    criteria: tuple[CriterionResult, ...]
+    contract_version: str
+
+    @classmethod
+    def _create(
+        cls,
+        *,
+        policy_fingerprint: str,
+        metric_contract_fingerprint: str,
+        verdict: GateVerdict,
+        criteria: tuple[CriterionResult, ...],
+    ) -> GateDecision:
+        instance = object.__new__(cls)
+        object.__setattr__(instance, "policy_fingerprint", policy_fingerprint)
+        object.__setattr__(
+            instance, "metric_contract_fingerprint", metric_contract_fingerprint
+        )
+        object.__setattr__(instance, "verdict", verdict)
+        object.__setattr__(instance, "criteria", criteria)
+        object.__setattr__(instance, "contract_version", GATE_DECISION_CONTRACT_VERSION)
+        return instance
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "contract_version": self.contract_version,
+            "criteria": [result.to_dict() for result in self.criteria],
+            "metric_contract_fingerprint": self.metric_contract_fingerprint,
+            "policy_fingerprint": self.policy_fingerprint,
+            "verdict": self.verdict,
+        }
+
+    def fingerprint(self) -> str:
+        return canonical_hash(self.to_dict())
+
+
+def _unavailable_result(
+    *,
+    criterion: GateCriterion,
+    required: bool,
+    comparison: MetricComparison | None,
+    reason: CriterionReason,
+) -> CriterionResult:
+    return CriterionResult._create(
+        criterion=criterion,
+        outcome="hold" if required else "not_applicable",
+        actual=None,
+        comparison_fingerprint=(
+            comparison.fingerprint() if comparison is not None else None
+        ),
+        reason=reason,
+    )
+
+
+def _absolute_result(
+    criterion: AbsoluteThresholdCriterion,
+    definition_required: bool,
+    comparison: MetricComparison | None,
+) -> CriterionResult:
+    if comparison is None:
+        return _unavailable_result(
+            criterion=criterion,
+            required=definition_required,
+            comparison=None,
+            reason="missing_comparison",
+        )
+    if comparison.candidate_fingerprint is None or comparison.candidate_status is None:
+        return _unavailable_result(
+            criterion=criterion,
+            required=definition_required,
+            comparison=comparison,
+            reason="missing_candidate",
+        )
+    if not comparison.candidate_compatible:
+        return _unavailable_result(
+            criterion=criterion,
+            required=definition_required,
+            comparison=comparison,
+            reason="incompatible_evidence",
+        )
+    if comparison.candidate_status == "unknown":
+        return _unavailable_result(
+            criterion=criterion,
+            required=definition_required,
+            comparison=comparison,
+            reason="unknown_value",
+        )
+    if comparison.candidate_status == "not_applicable":
+        return _unavailable_result(
+            criterion=criterion,
+            required=definition_required,
+            comparison=comparison,
+            reason="not_applicable",
+        )
+    if comparison.candidate_value is None:
+        raise GateContractError("numeric candidate status requires candidate_value")
+    actual = comparison.candidate_value
+    passed = (
+        actual >= criterion.threshold
+        if criterion.operator == "gte"
+        else actual <= criterion.threshold
+    )
+    return CriterionResult._create(
+        criterion=criterion,
+        outcome="pass" if passed else "fail",
+        actual=actual,
+        comparison_fingerprint=comparison.fingerprint(),
+        reason=None,
+    )
+
+
+def _relative_unavailable_reason(comparison: MetricComparison) -> CriterionReason:
+    if "missing_baseline" in comparison.reasons:
+        return "missing_baseline"
+    if "missing_candidate" in comparison.reasons:
+        return "missing_candidate"
+    if "unknown_value" in comparison.reasons:
+        return "unknown_value"
+    if "not_applicable" in comparison.reasons:
+        return "not_applicable"
+    if (
+        "metric_contract_mismatch" in comparison.reasons
+        or "partition_mismatch" in comparison.reasons
+    ):
+        return "incompatible_evidence"
+    if comparison.relative_delta_reason == "baseline_zero":
+        return "relative_delta_unavailable"
+    return "incompatible_evidence"
+
+
+def _relative_result(
+    criterion: RelativeBaselineCriterion,
+    definition_required: bool,
+    comparison: MetricComparison | None,
+) -> CriterionResult:
+    if comparison is None:
+        return _unavailable_result(
+            criterion=criterion,
+            required=definition_required,
+            comparison=None,
+            reason="missing_comparison",
+        )
+    if comparison.directional_relative_delta is None:
+        return _unavailable_result(
+            criterion=criterion,
+            required=definition_required,
+            comparison=comparison,
+            reason=_relative_unavailable_reason(comparison),
+        )
+    actual = comparison.directional_relative_delta
+    if criterion.mode == "no_regression_beyond":
+        passed = actual >= -criterion.threshold
+    else:
+        passed = actual >= criterion.threshold
+    return CriterionResult._create(
+        criterion=criterion,
+        outcome="pass" if passed else "fail",
+        actual=actual,
+        comparison_fingerprint=comparison.fingerprint(),
+        reason=None,
+    )
+
+
+def evaluate_gate(
+    *,
+    policy: GatePolicy,
+    comparisons: Sequence[MetricComparison],
+    metric_contract: MetricContract,
+) -> GateDecision:
+    """Evaluate one explicit comparison scope without hidden aggregation."""
+    if type(policy) is not GatePolicy:
+        raise GateContractError("policy must be a GatePolicy")
+    if type(metric_contract) is not MetricContract:
+        raise GateContractError("metric_contract must be a MetricContract")
+    expected_contract_fingerprint = metric_contract.fingerprint()
+    if policy.metric_contract_fingerprint != expected_contract_fingerprint:
+        raise GateContractError("metric contract fingerprint does not match GatePolicy")
+    if isinstance(comparisons, (str, bytes)) or not isinstance(comparisons, Sequence):
+        raise GateContractError("comparisons must be a sequence of MetricComparison")
+
+    by_metric: dict[str, MetricComparison] = {}
+    for comparison in comparisons:
+        if type(comparison) is not MetricComparison:
+            raise GateContractError(
+                "comparisons must contain MetricComparison instances"
+            )
+        if comparison.metric_contract_fingerprint != expected_contract_fingerprint:
+            raise GateContractError(
+                "comparison metric contract fingerprint does not match supplied contract"
+            )
+        if comparison.metric_id in by_metric:
+            raise GateContractError(
+                f"multiple comparisons for metric: {comparison.metric_id}"
+            )
+        by_metric[comparison.metric_id] = comparison
+
+    results: list[CriterionResult] = []
+    for criterion in policy.criteria:
+        definition = metric_contract.definition(criterion.metric_id)
+        comparison = by_metric.get(criterion.metric_id)
+        if type(criterion) is AbsoluteThresholdCriterion:
+            result = _absolute_result(criterion, definition.required, comparison)
+        else:
+            result = _relative_result(criterion, definition.required, comparison)
+        results.append(result)
+
+    normalized = tuple(sorted(results, key=lambda item: item.criterion.criterion_id))
+    outcomes = {result.outcome for result in normalized}
+    if "fail" in outcomes:
+        verdict: GateVerdict = "FAIL"
+    elif "hold" in outcomes:
+        verdict = "HOLD"
+    else:
+        verdict = "PASS"
+
+    return GateDecision._create(
+        policy_fingerprint=policy.fingerprint(),
+        metric_contract_fingerprint=expected_contract_fingerprint,
+        verdict=verdict,
+        criteria=normalized,
+    )
