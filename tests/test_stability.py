@@ -562,3 +562,93 @@ def test_mixed_candidate_identities_on_one_side_fail_closed() -> None:
             metric_id="quality.score",
             config=StabilityConfig("mean", 10, 2, seed=1),
         )
+
+
+def test_large_magnitude_pair_delta_is_not_rounded_away() -> None:
+    contract = _contract()
+    baseline = (
+        _obs(
+            contract,
+            candidate_id="b",
+            metric_id="quality.score",
+            observation_id="o1",
+            value=Decimal("1e100"),
+        ),
+        _obs(
+            contract,
+            candidate_id="b",
+            metric_id="quality.score",
+            observation_id="o2",
+            value=Decimal("0"),
+        ),
+    )
+    candidate = (
+        _obs(
+            contract,
+            candidate_id="c",
+            metric_id="quality.score",
+            observation_id="o1",
+            value=Decimal("1e100"),
+        ),
+        _obs(
+            contract,
+            candidate_id="c",
+            metric_id="quality.score",
+            observation_id="o2",
+            value=Decimal("1"),
+        ),
+    )
+    result = paired_resample_stability(
+        baseline=baseline,
+        candidate=candidate,
+        metric_contract=contract,
+        metric_id="quality.score",
+        config=StabilityConfig("mean", 20, 2, seed=1),
+    )
+    assert result.status == "complete"
+    assert result.observed_delta == Decimal("0.5")
+    assert result.favors_candidate is True
+
+
+def test_incomplete_reports_partition_and_missing_pair_reasons() -> None:
+    contract = _contract()
+    left_partition = _partition("left")
+    right_partition = _partition("right")
+    baseline = (
+        _obs(
+            contract,
+            candidate_id="b",
+            metric_id="quality.score",
+            observation_id="o1",
+            value=1,
+            partition=left_partition,
+        ),
+        _obs(
+            contract,
+            candidate_id="b",
+            metric_id="quality.score",
+            observation_id="o2",
+            value=2,
+            partition=left_partition,
+        ),
+    )
+    candidate = (
+        _obs(
+            contract,
+            candidate_id="c",
+            metric_id="quality.score",
+            observation_id="o1",
+            value=3,
+            partition=right_partition,
+        ),
+    )
+    result = paired_resample_stability(
+        baseline=baseline,
+        candidate=candidate,
+        metric_contract=contract,
+        metric_id="quality.score",
+        config=StabilityConfig("mean", 10, 1, seed=1),
+    )
+    assert result.status == "incomplete"
+    assert "partition_mismatch" in result.reasons
+    assert "missing_candidate_pairs" in result.reasons

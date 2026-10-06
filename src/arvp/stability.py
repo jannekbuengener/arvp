@@ -309,29 +309,21 @@ def paired_resample_stability(
     if not baseline_index and not candidate_index:
         raise StabilityError("no observations for metric_id")
 
+    reasons: list[str] = []
     if (
         baseline_partition is not None
         and candidate_partition is not None
         and baseline_partition != candidate_partition
     ):
-        return _incomplete(
-            request_fingerprint=request_fingerprint,
-            metric_id=metric_id,
-            direction=definition.direction,
-            config=config,
-            reasons=("partition_mismatch",),
-        )
+        reasons.append("partition_mismatch")
 
     baseline_ids = set(baseline_index)
     candidate_ids = set(candidate_index)
-    missing_baseline = sorted(candidate_ids - baseline_ids)
-    missing_candidate = sorted(baseline_ids - candidate_ids)
-    if missing_baseline or missing_candidate:
-        reasons: list[str] = []
-        if missing_baseline:
-            reasons.append("missing_baseline_pairs")
-        if missing_candidate:
-            reasons.append("missing_candidate_pairs")
+    if sorted(candidate_ids - baseline_ids):
+        reasons.append("missing_baseline_pairs")
+    if sorted(baseline_ids - candidate_ids):
+        reasons.append("missing_candidate_pairs")
+    if reasons:
         return _incomplete(
             request_fingerprint=request_fingerprint,
             metric_id=metric_id,
@@ -363,24 +355,25 @@ def paired_resample_stability(
     if config.blocks_per_sample > len(pairs):
         raise StabilityError("blocks_per_sample cannot exceed pair_count")
 
-    baseline_values = [item[0] for item in pairs]
-    candidate_values = [item[1] for item in pairs]
     try:
         with localcontext(_pinned_context()):
-            observed_delta = _aggregate(
-                candidate_values, config.aggregation
-            ) - _aggregate(baseline_values, config.aggregation)
+            # Aggregate pair deltas (not aggregates-then-subtract) so large shared
+            # magnitudes cannot cancel the measured change under fixed precision.
+            pair_deltas = [
+                candidate_value - baseline_value
+                for baseline_value, candidate_value in pairs
+            ]
+            observed_delta = _aggregate(pair_deltas, config.aggregation)
 
             rng = random.Random(config.seed)
             sample_deltas: list[Decimal] = []
             for _ in range(config.sample_count):
                 sampled = [rng.choice(pairs) for _ in range(config.blocks_per_sample)]
-                sample_baseline = [item[0] for item in sampled]
-                sample_candidate = [item[1] for item in sampled]
-                sample_deltas.append(
-                    _aggregate(sample_candidate, config.aggregation)
-                    - _aggregate(sample_baseline, config.aggregation)
-                )
+                sampled_deltas = [
+                    candidate_value - baseline_value
+                    for baseline_value, candidate_value in sampled
+                ]
+                sample_deltas.append(_aggregate(sampled_deltas, config.aggregation))
             ordered = sorted(sample_deltas)
             p05 = _quantile(ordered, 5)
             p50 = _quantile(ordered, 50)
