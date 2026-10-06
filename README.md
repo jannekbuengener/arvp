@@ -1,17 +1,13 @@
 # ARVP
 
-ARVP is a domain-independent Python framework for deterministic validation,
-evaluation, and experiments. Its initial core was extracted from reusable ARVP
-patterns in [Claire de Binare](https://github.com/jannekbuengener/Claire_de_Binare).
-
-This repository is deliberately a bootstrap, not a completed generalization.
-It establishes a small, runnable core for deterministic serialization, dataset
-identity, provenance, scenario execution, evaluation splits, stability analysis,
-candidate comparison, and explicit gates.
+ARVP is a domain-neutral Python framework for deterministic validation,
+evaluation, and experiments. Version **0.2.0** freezes the portable contract
+surface: identities, typed metrics, baseline comparison, PASS/FAIL/HOLD gates,
+paired stability, Evidence Bundle v1, and an artifact-first consumer boundary.
 
 The core has no trading, live-execution, exchange, database, Docker, credential,
-or market-data dependency. It does not contain strategy logic or proprietary
-datasets.
+market-data, audio, or Sample Brain runtime dependency. Domain adapters live
+outside `src/arvp`.
 
 ## Model
 
@@ -19,41 +15,58 @@ datasets.
 DATASET -> CANDIDATE -> RUN -> METRICS -> COMPARE -> GATE -> EVIDENCE
 ```
 
-The package currently exposes focused modules:
+Consumer boundary:
+
+```text
+portable EvaluationInput (baseline_observations / candidate_observations)
+  -> ARVP evaluation
+  -> Evidence Bundle v1
+```
+
+## Public modules
 
 - `arvp.canonical` — canonical JSON and SHA-256 hashing
-- `arvp.datasets` — safe request and explicit ordered/unordered content identities
+- `arvp.datasets` — safe request and ordered/unordered content identities
 - `arvp.identities` — domain-neutral candidate and evaluation-partition identities
 - `arvp.metrics` / `arvp.gates` — typed metrics, baseline comparison, PASS/FAIL/HOLD
-- `arvp.suite` — versioned `EvaluationSuite` binding content, partitions, metrics, gates
-- `arvp.stability` — explicit mean/sum aggregation and paired deterministic resampling
-- `arvp.provenance` — RunProvenance v2 and single-writer JSONL registry integrity
-- `arvp.bundle` — versioned Evidence Bundle v1 with semantic fingerprint and atomic writer
-- `arvp.schemas` — packaged JSON Schema assets for portable contracts
-- `arvp.adapters` — artifact-first EvaluationInput envelope and in-process producer protocol
-- `arvp.scenarios` — Scenario Harness v2 with decision-relevant request/result identity
-- `arvp.evaluation` — legacy window execution plus resampling, comparison, and gate helpers
+- `arvp.suite` — versioned `EvaluationSuite`
+- `arvp.stability` — explicit aggregation and paired deterministic resampling
+- `arvp.provenance` — RunProvenance v2 and JSONL registry integrity
+- `arvp.bundle` — Evidence Bundle v1 with semantic fingerprint and atomic writer
+- `arvp.schemas` — packaged JSON Schema assets
+- `arvp.adapters` — EvaluationInput envelope and in-process Protocol
+- `arvp.scenarios` — Scenario Harness v2
+- `arvp.evaluation` — legacy window helpers (prefer v0.2 modules above)
+- `arvp.evidence` — structured failure evidence and portable metadata safety
 
-Reference adapters outside `src/arvp` (do not import consumer runtimes into core):
+## Reference proofs (outside core)
 
-- `examples/integer_threshold_classification` — second-domain synthetic proof (#13)
-- `examples/sample_brain_fsld_key_tempo` — Sample Brain FSLD key/tempo artifact integration (#14)
+- `examples/integer_threshold_classification` — synthetic second-domain E2E (#13)
+- `examples/sample_brain_fsld_key_tempo` — Sample Brain FSLD key/tempo (#14)
 
 ## Development
 
 Requires Python 3.11 or later.
 
 ```powershell
+python -m pip install -e ".[dev]"
 python -m pytest
+python -m ruff check .
+python -m ruff format --check .
+python -m mypy src/arvp
 ```
 
-For extraction lineage, scope boundaries, and deferred work, see
-[`docs/EXTRACTION_FROM_CLAIRE.md`](docs/EXTRACTION_FROM_CLAIRE.md) and
-[`docs/GENERALIZATION_ROADMAP.md`](docs/GENERALIZATION_ROADMAP.md),
-[`docs/identity-contracts-v1.md`](docs/identity-contracts-v1.md),
-[`docs/metric-contracts-v1.md`](docs/metric-contracts-v1.md),
-[`docs/gate-contracts-v1.md`](docs/gate-contracts-v1.md),
-[`docs/provenance-contracts-v2.md`](docs/provenance-contracts-v2.md),
-[`docs/stability-contracts-v1.md`](docs/stability-contracts-v1.md),
-[`docs/evidence-bundle-v1.md`](docs/evidence-bundle-v1.md), and
-[`docs/adapter-scenario-harness-v2.md`](docs/adapter-scenario-harness-v2.md).
+## Documentation
+
+- [`docs/architecture-v0.2.md`](docs/architecture-v0.2.md)
+- [`docs/compatibility-policy-v0.2.md`](docs/compatibility-policy-v0.2.md)
+- [`docs/CHANGELOG-v0.2.md`](docs/CHANGELOG-v0.2.md) / [`CHANGELOG.md`](CHANGELOG.md)
+- [`docs/governance-ruleset-proposal-v0.2.md`](docs/governance-ruleset-proposal-v0.2.md)
+  (proposal only; application requires Owner GO)
+- Contract docs: canonical, identity, metric, gate, provenance, stability,
+  evidence-bundle, adapter/scenario harness
+
+## Release status
+
+Package version: **0.2.0**. Optional git tag `v0.2.0` and GitHub `main` ruleset
+application remain Owner-GO gated and are not implied by this package bump.

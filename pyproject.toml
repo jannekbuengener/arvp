@@ -4,11 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arvp"
-version = "0.1.0"
+version = "0.2.0"
 description = "Deterministic validation, evaluation and experiment framework."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "Proprietary" }
+license = "LicenseRef-Proprietary"
+license-files = ["LICENSE"]
 authors = [{ name = "Jannek Buengener" }]
 classifiers = [
   "Programming Language :: Python :: 3",
