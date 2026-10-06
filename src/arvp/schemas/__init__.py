@@ -8,6 +8,7 @@ from typing import Any
 
 SCHEMA_ASSET_NAMES = (
     "evidence_bundle_v1.json",
+    "evaluation_input_v1.json",
     "evaluation_suite_v1.json",
     "metric_observation_v1.json",
 )

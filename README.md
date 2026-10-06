@@ -30,7 +30,8 @@ The package currently exposes focused modules:
 - `arvp.provenance` — RunProvenance v2 and single-writer JSONL registry integrity
 - `arvp.bundle` — versioned Evidence Bundle v1 with semantic fingerprint and atomic writer
 - `arvp.schemas` — packaged JSON Schema assets for portable contracts
-- `arvp.scenarios` — explicit, fail-closed scenario orchestration
+- `arvp.adapters` — artifact-first EvaluationInput envelope and in-process producer protocol
+- `arvp.scenarios` — Scenario Harness v2 with decision-relevant request/result identity
 - `arvp.evaluation` — legacy window execution plus resampling, comparison, and gate helpers
 
 ## Development
@@ -48,5 +49,6 @@ For extraction lineage, scope boundaries, and deferred work, see
 [`docs/metric-contracts-v1.md`](docs/metric-contracts-v1.md),
 [`docs/gate-contracts-v1.md`](docs/gate-contracts-v1.md),
 [`docs/provenance-contracts-v2.md`](docs/provenance-contracts-v2.md),
-[`docs/stability-contracts-v1.md`](docs/stability-contracts-v1.md), and
-[`docs/evidence-bundle-v1.md`](docs/evidence-bundle-v1.md).
+[`docs/stability-contracts-v1.md`](docs/stability-contracts-v1.md),
+[`docs/evidence-bundle-v1.md`](docs/evidence-bundle-v1.md), and
+[`docs/adapter-scenario-harness-v2.md`](docs/adapter-scenario-harness-v2.md).
