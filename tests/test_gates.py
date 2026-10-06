@@ -1163,14 +1163,20 @@ def test_comparison_rejects_unrepresentable_arithmetic_deterministically() -> No
 
 def test_delta_context_ignores_default_context_traps() -> None:
     """Pinned contexts never inherit traps from mutable decimal.DefaultContext."""
-    from decimal import DefaultContext, Inexact
+    from decimal import DefaultContext, Inexact, localcontext
 
     from arvp.gates import _pinned_context
 
     original = DefaultContext.traps[Inexact]
     DefaultContext.traps[Inexact] = True
     try:
-        assert not _pinned_context(prec=50).traps[Inexact]
+        # Bind before subscripting: on Python 3.13+ the signal dict of a
+        # temporary Context dies with it (ValueError: invalid signal dict).
+        pinned = _pinned_context(prec=50)
+        assert not pinned.traps[Inexact]
+
+        with localcontext(pinned):
+            Decimal("1") / Decimal("3")
 
         comparison = _single_comparison(
             _contract(), metric_id="quality.score", baseline_value=3, candidate_value=4
