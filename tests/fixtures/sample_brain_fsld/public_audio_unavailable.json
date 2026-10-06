@@ -1,0 +1,150 @@
+{
+  "document_type": "sample_brain.fsld_current_analyzer_eval",
+  "manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "metrics": null,
+  "records": [
+    {
+      "analyzer_id": "sample_brain.analyze.extract_features",
+      "annotation_tier": "ma",
+      "bpm_normalization": "none",
+      "exclusion_reason": "audio_missing",
+      "ground_truth": {
+        "bpm": 120.0,
+        "bpm_evidence": "known",
+        "key_mode": "maj",
+        "key_root": "C",
+        "mode_evidence": "known",
+        "root_evidence": "known",
+        "tonality": "tonal"
+      },
+      "key_analysis_contract_version": "1.0.0",
+      "mode_contrast_min": 0.15,
+      "native_evidence": {
+        "key_conf": null,
+        "key_mode_evidence": null,
+        "quality_note": null
+      },
+      "predicted_bpm": null,
+      "predicted_key": null,
+      "predicted_key_mode": null,
+      "predicted_key_root": null,
+      "public_sample_id": "90001",
+      "runtime_libraries": {
+        "librosa": "0.10.2",
+        "numpy": "2.1.0",
+        "soundfile": "0.12.1"
+      },
+      "runtime_ms": null,
+      "split": "TEST",
+      "status": "missing_audio"
+    },
+    {
+      "analyzer_id": "sample_brain.analyze.extract_features",
+      "annotation_tier": "ma",
+      "bpm_normalization": "none",
+      "exclusion_reason": "audio_missing",
+      "ground_truth": {
+        "bpm": 100.0,
+        "bpm_evidence": "known",
+        "key_mode": "min",
+        "key_root": "D",
+        "mode_evidence": "known",
+        "root_evidence": "known",
+        "tonality": "tonal"
+      },
+      "key_analysis_contract_version": "1.0.0",
+      "mode_contrast_min": 0.15,
+      "native_evidence": {
+        "key_conf": null,
+        "key_mode_evidence": null,
+        "quality_note": null
+      },
+      "predicted_bpm": null,
+      "predicted_key": null,
+      "predicted_key_mode": null,
+      "predicted_key_root": null,
+      "public_sample_id": "90002",
+      "runtime_libraries": {
+        "librosa": "0.10.2",
+        "numpy": "2.1.0",
+        "soundfile": "0.12.1"
+      },
+      "runtime_ms": null,
+      "split": "TEST",
+      "status": "missing_audio"
+    },
+    {
+      "analyzer_id": "sample_brain.analyze.extract_features",
+      "annotation_tier": "sa",
+      "bpm_normalization": "none",
+      "exclusion_reason": "audio_missing",
+      "ground_truth": {
+        "bpm": 128.0,
+        "bpm_evidence": "known",
+        "key_mode": "maj",
+        "key_root": "G",
+        "mode_evidence": "known",
+        "root_evidence": "known",
+        "tonality": "tonal"
+      },
+      "key_analysis_contract_version": "1.0.0",
+      "mode_contrast_min": 0.15,
+      "native_evidence": {
+        "key_conf": null,
+        "key_mode_evidence": null,
+        "quality_note": null
+      },
+      "predicted_bpm": null,
+      "predicted_key": null,
+      "predicted_key_mode": null,
+      "predicted_key_root": null,
+      "public_sample_id": "90003",
+      "runtime_libraries": {
+        "librosa": "0.10.2",
+        "numpy": "2.1.0",
+        "soundfile": "0.12.1"
+      },
+      "runtime_ms": null,
+      "split": "TEST",
+      "status": "missing_audio"
+    },
+    {
+      "analyzer_id": "sample_brain.analyze.extract_features",
+      "annotation_tier": "sa",
+      "bpm_normalization": "none",
+      "exclusion_reason": "audio_missing",
+      "ground_truth": {
+        "bpm": 90.0,
+        "bpm_evidence": "known",
+        "key_mode": "min",
+        "key_root": "A",
+        "mode_evidence": "known",
+        "root_evidence": "known",
+        "tonality": "tonal"
+      },
+      "key_analysis_contract_version": "1.0.0",
+      "mode_contrast_min": 0.15,
+      "native_evidence": {
+        "key_conf": null,
+        "key_mode_evidence": null,
+        "quality_note": null
+      },
+      "predicted_bpm": null,
+      "predicted_key": null,
+      "predicted_key_mode": null,
+      "predicted_key_root": null,
+      "public_sample_id": "90004",
+      "runtime_libraries": {
+        "librosa": "0.10.2",
+        "numpy": "2.1.0",
+        "soundfile": "0.12.1"
+      },
+      "runtime_ms": null,
+      "split": "TEST",
+      "status": "missing_audio"
+    }
+  ],
+  "run_status": "PUBLIC_AUDIO_NOT_AVAILABLE_LOCALLY",
+  "schema_version": "1.0.0",
+  "split": "TEST"
+}

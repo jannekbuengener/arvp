@@ -1,0 +1,251 @@
+{
+  "document_type": "sample_brain.fsld_current_analyzer_eval",
+  "manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "metrics": {
+    "ma": {
+      "full_key": {
+        "eligible": 2,
+        "exact": 2,
+        "exact_rate": 1.0,
+        "predicted": 2
+      },
+      "key_root": {
+        "eligible": 2,
+        "exact": 2,
+        "exact_rate": 1.0,
+        "predicted": 2
+      },
+      "tempo": {
+        "absolute_bpm_error": {
+          "count": 2,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0
+        },
+        "eligible": 2,
+        "predicted": 2,
+        "relation_counts": {
+          "ambiguous": 0,
+          "correct": 2,
+          "double": 0,
+          "half": 0,
+          "outlier": 0
+        },
+        "relation_rates": {
+          "ambiguous": 0.0,
+          "correct": 1.0,
+          "double": 0.0,
+          "half": 0.0,
+          "outlier": 0.0
+        },
+        "relative_bpm_error": {
+          "count": 2,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0
+        }
+      }
+    },
+    "sa": {
+      "full_key": {
+        "eligible": 2,
+        "exact": 2,
+        "exact_rate": 1.0,
+        "predicted": 2
+      },
+      "key_root": {
+        "eligible": 2,
+        "exact": 2,
+        "exact_rate": 1.0,
+        "predicted": 2
+      },
+      "tempo": {
+        "absolute_bpm_error": {
+          "count": 2,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0
+        },
+        "eligible": 2,
+        "predicted": 2,
+        "relation_counts": {
+          "ambiguous": 0,
+          "correct": 2,
+          "double": 0,
+          "half": 0,
+          "outlier": 0
+        },
+        "relation_rates": {
+          "ambiguous": 0.0,
+          "correct": 1.0,
+          "double": 0.0,
+          "half": 0.0,
+          "outlier": 0.0
+        },
+        "relative_bpm_error": {
+          "count": 2,
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0
+        }
+      }
+    }
+  },
+  "records": [
+    {
+      "analyzer_id": "sample_brain.analyze.extract_features",
+      "annotation_tier": "ma",
+      "bpm_normalization": "none",
+      "exclusion_reason": null,
+      "ground_truth": {
+        "bpm": 120.0,
+        "bpm_evidence": "known",
+        "key_mode": "maj",
+        "key_root": "C",
+        "mode_evidence": "known",
+        "root_evidence": "known",
+        "tonality": "tonal"
+      },
+      "key_analysis_contract_version": "1.0.0",
+      "mode_contrast_min": 0.15,
+      "native_evidence": {
+        "key_conf": 0.55,
+        "key_mode_evidence": {
+          "contrast": 0.42,
+          "kind": "third_contrast"
+        },
+        "quality_note": null
+      },
+      "predicted_bpm": 120.0,
+      "predicted_key": "Cmaj",
+      "predicted_key_mode": "maj",
+      "predicted_key_root": "C",
+      "public_sample_id": "90001",
+      "runtime_libraries": {
+        "librosa": "0.10.2",
+        "numpy": "2.1.0",
+        "soundfile": "0.12.1"
+      },
+      "runtime_ms": 11.0,
+      "split": "CALIBRATION",
+      "status": "ok"
+    },
+    {
+      "analyzer_id": "sample_brain.analyze.extract_features",
+      "annotation_tier": "ma",
+      "bpm_normalization": "none",
+      "exclusion_reason": null,
+      "ground_truth": {
+        "bpm": 100.0,
+        "bpm_evidence": "known",
+        "key_mode": "min",
+        "key_root": "D",
+        "mode_evidence": "known",
+        "root_evidence": "known",
+        "tonality": "tonal"
+      },
+      "key_analysis_contract_version": "1.0.0",
+      "mode_contrast_min": 0.15,
+      "native_evidence": {
+        "key_conf": 0.55,
+        "key_mode_evidence": {
+          "contrast": 0.42,
+          "kind": "third_contrast"
+        },
+        "quality_note": null
+      },
+      "predicted_bpm": 100.0,
+      "predicted_key": "Dmin",
+      "predicted_key_mode": "min",
+      "predicted_key_root": "D",
+      "public_sample_id": "90002",
+      "runtime_libraries": {
+        "librosa": "0.10.2",
+        "numpy": "2.1.0",
+        "soundfile": "0.12.1"
+      },
+      "runtime_ms": 11.0,
+      "split": "CALIBRATION",
+      "status": "ok"
+    },
+    {
+      "analyzer_id": "sample_brain.analyze.extract_features",
+      "annotation_tier": "sa",
+      "bpm_normalization": "none",
+      "exclusion_reason": null,
+      "ground_truth": {
+        "bpm": 128.0,
+        "bpm_evidence": "known",
+        "key_mode": "maj",
+        "key_root": "G",
+        "mode_evidence": "known",
+        "root_evidence": "known",
+        "tonality": "tonal"
+      },
+      "key_analysis_contract_version": "1.0.0",
+      "mode_contrast_min": 0.15,
+      "native_evidence": {
+        "key_conf": 0.55,
+        "key_mode_evidence": {
+          "contrast": 0.42,
+          "kind": "third_contrast"
+        },
+        "quality_note": null
+      },
+      "predicted_bpm": 128.0,
+      "predicted_key": "Gmaj",
+      "predicted_key_mode": "maj",
+      "predicted_key_root": "G",
+      "public_sample_id": "90003",
+      "runtime_libraries": {
+        "librosa": "0.10.2",
+        "numpy": "2.1.0",
+        "soundfile": "0.12.1"
+      },
+      "runtime_ms": 11.0,
+      "split": "CALIBRATION",
+      "status": "ok"
+    },
+    {
+      "analyzer_id": "sample_brain.analyze.extract_features",
+      "annotation_tier": "sa",
+      "bpm_normalization": "none",
+      "exclusion_reason": null,
+      "ground_truth": {
+        "bpm": 90.0,
+        "bpm_evidence": "known",
+        "key_mode": "min",
+        "key_root": "A",
+        "mode_evidence": "known",
+        "root_evidence": "known",
+        "tonality": "tonal"
+      },
+      "key_analysis_contract_version": "1.0.0",
+      "mode_contrast_min": 0.15,
+      "native_evidence": {
+        "key_conf": 0.55,
+        "key_mode_evidence": {
+          "contrast": 0.42,
+          "kind": "third_contrast"
+        },
+        "quality_note": null
+      },
+      "predicted_bpm": 90.0,
+      "predicted_key": "Amin",
+      "predicted_key_mode": "min",
+      "predicted_key_root": "A",
+      "public_sample_id": "90004",
+      "runtime_libraries": {
+        "librosa": "0.10.2",
+        "numpy": "2.1.0",
+        "soundfile": "0.12.1"
+      },
+      "runtime_ms": 11.0,
+      "split": "CALIBRATION",
+      "status": "ok"
+    }
+  ],
+  "run_status": "EVALUATED",
+  "schema_version": "1.0.0",
+  "split": "CALIBRATION"
+}

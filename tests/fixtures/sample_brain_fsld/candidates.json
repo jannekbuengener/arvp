@@ -1,0 +1,37 @@
+{
+  "candidates": {
+    "baseline": {
+      "candidate_id": "fsld.keytempo.baseline",
+      "configuration": {
+        "bpm_normalization": "none",
+        "key_analysis_contract_version": "1.0.0",
+        "profile": "baseline"
+      },
+      "implementation_id": "sample_brain.analyze.extract_features",
+      "revision": "fixture-baseline-r1"
+    },
+    "improved": {
+      "candidate_id": "fsld.keytempo.improved",
+      "configuration": {
+        "bpm_normalization": "none",
+        "key_analysis_contract_version": "1.0.0",
+        "profile": "improved"
+      },
+      "implementation_id": "sample_brain.analyze.extract_features",
+      "revision": "fixture-improved-r1"
+    },
+    "regression": {
+      "candidate_id": "fsld.keytempo.regression",
+      "configuration": {
+        "bpm_normalization": "none",
+        "key_analysis_contract_version": "1.0.0",
+        "profile": "regression"
+      },
+      "implementation_id": "sample_brain.analyze.extract_features",
+      "revision": "fixture-regression-r1"
+    }
+  },
+  "note": "Explicit external candidate descriptors; FSLD reports do not carry a git/code revision. Synthetic public_sample_id values only; no audio, paths, or private identifiers.",
+  "source_sample_brain_commit": "eff14d25",
+  "source_schema": "sample_brain.fsld_current_analyzer_eval@1.0.0"
+}
