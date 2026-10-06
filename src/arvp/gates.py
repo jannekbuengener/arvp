@@ -8,11 +8,15 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import (
     MAX_EMAX,
+    MAX_PREC,
     MIN_EMIN,
     ROUND_HALF_EVEN,
     Context,
     Decimal,
+    DivisionByZero,
+    InvalidOperation,
     Overflow,
+    Underflow,
     localcontext,
 )
 from typing import Any, Literal
@@ -52,18 +56,25 @@ _REASON_ORDER: tuple[ComparisonReason, ...] = (
     "not_applicable",
 )
 _NUMERIC_STATUSES = frozenset({"measured", "derived"})
-# Delta arithmetic runs under a pinned Decimal context: ambient thread context
-# (precision, rounding, traps, exponent limits) must never change comparison
-# evidence or verdicts. Emax/Emin cover the full exponent range accepted by
-# MetricContract.value(); a result outside the Decimal representable range
-# raises a gate-domain error instead of leaking decimal.Overflow.
+# Delta and threshold arithmetic run under pinned Decimal contexts: ambient
+# thread context (precision, rounding, traps, exponent limits) and the mutable
+# decimal.DefaultContext must never change comparison evidence or verdicts.
+# Emax/Emin cover the full exponent range accepted by MetricContract.value();
+# results outside the Decimal representable range raise a gate-domain error
+# instead of leaking raw decimal exceptions. Traps are fixed explicitly so a
+# host that mutates DefaultContext.traps cannot inject new failure modes.
 _DELTA_PRECISION = 50
-_DELTA_CONTEXT = Context(
-    prec=_DELTA_PRECISION,
-    rounding=ROUND_HALF_EVEN,
-    Emax=MAX_EMAX,
-    Emin=MIN_EMIN,
-)
+
+
+def _pinned_context(*, prec: int) -> Context:
+    """Fixed deterministic context; never inherits decimal.DefaultContext."""
+    return Context(
+        prec=prec,
+        rounding=ROUND_HALF_EVEN,
+        Emax=MAX_EMAX,
+        Emin=MIN_EMIN,
+        traps=[InvalidOperation, DivisionByZero, Overflow, Underflow],
+    )
 
 
 class GateContractError(ValueError):
@@ -553,7 +564,7 @@ def compare_observation_scope(
                     "complete comparison requires numeric metric values"
                 )
             try:
-                with localcontext(_DELTA_CONTEXT):
+                with localcontext(_pinned_context(prec=_DELTA_PRECISION)):
                     absolute_delta = candidate_metric.value - baseline_metric.value
                     if baseline_metric.value == 0:
                         relative_delta_reason = "baseline_zero"
@@ -563,7 +574,7 @@ def compare_observation_scope(
                             directional_relative_delta = relative_delta
                         elif definition.direction == "minimize":
                             directional_relative_delta = -relative_delta
-            except Overflow as exc:
+            except (InvalidOperation, DivisionByZero, Overflow, Underflow) as exc:
                 raise GateContractError(
                     "comparison arithmetic exceeds the supported decimal range"
                 ) from exc
@@ -824,6 +835,96 @@ def _relative_unavailable_reason(comparison: MetricComparison) -> CriterionReaso
     return "incompatible_evidence"
 
 
+# |rounded evidence - truth| stays below |actual| * 10^-48 for the
+# double-rounded prec-50 relative delta (actual == 0 implies an exact tie);
+# limits farther apart than that margin decide from the evidence alone,
+# boundary limits use the exact relation.
+_RELATIVE_MARGIN_FACTOR = Decimal("1e-48")
+_RELATIVE_MARGIN_PRECISION = _DELTA_PRECISION + 60
+_EXACT_RELATION_SLACK = 2
+
+
+def _relative_margin_interval(actual: Decimal) -> tuple[Decimal, Decimal] | None:
+    """Bounds ``[lower, upper]`` guaranteed to contain the unrounded ratio."""
+    try:
+        with localcontext(_pinned_context(prec=_RELATIVE_MARGIN_PRECISION)):
+            margin = actual.copy_abs() * _RELATIVE_MARGIN_FACTOR
+            return actual - margin, actual + margin
+    except (InvalidOperation, DivisionByZero, Overflow, Underflow):
+        return None
+
+
+def _exact_relative_pass(
+    *,
+    baseline_value: Decimal,
+    candidate_value: Decimal,
+    limit: Decimal,
+    direction: MetricDirection,
+) -> bool:
+    """Exact ``sign * (candidate - baseline) >= limit * |baseline|`` relation."""
+    _, candidate_digits, candidate_exp = candidate_value.as_tuple()
+    _, baseline_digits, baseline_exp = baseline_value.as_tuple()
+    _, limit_digits, _ = limit.as_tuple()
+    # After contract validation, operands are finite: exponents are ints
+    assert isinstance(candidate_exp, int), "exponent must be int for finite Decimal"
+    assert isinstance(baseline_exp, int), "exponent must be int for finite Decimal"
+    difference_precision = (
+        max(candidate_exp, baseline_exp)
+        - min(
+            candidate_exp - len(candidate_digits) + 1,
+            baseline_exp - len(baseline_digits) + 1,
+        )
+        + 1
+        + _EXACT_RELATION_SLACK
+    )
+    product_precision = len(limit_digits) + len(baseline_digits) + _EXACT_RELATION_SLACK
+    precision = max(difference_precision, product_precision)
+    if precision > MAX_PREC:
+        raise GateContractError(
+            "comparison arithmetic exceeds the supported decimal range"
+        )
+    sign = 1 if direction == "maximize" else -1
+    try:
+        with localcontext(_pinned_context(prec=precision)):
+            difference = candidate_value - baseline_value
+            scaled_limit = limit * baseline_value.copy_abs()
+            return sign * difference >= scaled_limit
+    except (InvalidOperation, DivisionByZero, Overflow, Underflow) as exc:
+        raise GateContractError(
+            "comparison arithmetic exceeds the supported decimal range"
+        ) from exc
+
+
+def _relative_threshold_passes(
+    *, comparison: MetricComparison, actual: Decimal, limit: Decimal
+) -> bool:
+    """Decide ``actual >= limit`` without rounding-driven verdict flips.
+
+    ``actual`` is pinned 50-digit evidence; when it sits within its rounding
+    margin of ``limit`` the verdict comes from the exact relation so that
+    high-precision thresholds cannot be flipped by evidence rounding.
+    """
+    baseline_value = comparison.baseline_value
+    candidate_value = comparison.candidate_value
+    if baseline_value is None or candidate_value is None:
+        raise GateContractError(
+            "relative criterion requires numeric comparison evidence"
+        )
+    interval = _relative_margin_interval(actual)
+    if interval is not None:
+        lower, upper = interval
+        if lower >= limit:
+            return True
+        if upper < limit:
+            return False
+    return _exact_relative_pass(
+        baseline_value=baseline_value,
+        candidate_value=candidate_value,
+        limit=limit,
+        direction=comparison.direction,
+    )
+
+
 def _relative_result(
     criterion: RelativeBaselineCriterion,
     definition_required: bool,
@@ -845,9 +946,12 @@ def _relative_result(
         )
     actual = comparison.directional_relative_delta
     if criterion.mode == "no_regression_beyond":
-        passed = actual >= -criterion.threshold
+        limit = criterion.threshold.copy_negate()
     else:
-        passed = actual >= criterion.threshold
+        limit = criterion.threshold
+    passed = _relative_threshold_passes(
+        comparison=comparison, actual=actual, limit=limit
+    )
     return CriterionResult._create(
         criterion=criterion,
         outcome="pass" if passed else "fail",

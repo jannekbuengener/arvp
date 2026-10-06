@@ -1161,6 +1161,154 @@ def test_comparison_rejects_unrepresentable_arithmetic_deterministically() -> No
         )
 
 
+def test_delta_context_ignores_default_context_traps() -> None:
+    """Pinned contexts never inherit traps from mutable decimal.DefaultContext."""
+    from decimal import DefaultContext, Inexact
+
+    from arvp.gates import _pinned_context
+
+    original = DefaultContext.traps[Inexact]
+    DefaultContext.traps[Inexact] = True
+    try:
+        assert not _pinned_context(prec=50).traps[Inexact]
+
+        comparison = _single_comparison(
+            _contract(), metric_id="quality.score", baseline_value=3, candidate_value=4
+        )
+        assert comparison.relative_delta is not None
+    finally:
+        DefaultContext.traps[Inexact] = original
+
+
+def test_comparison_translates_subnormal_range_arithmetic_failures() -> None:
+    """Subnormal-range operands fail as gate-domain errors, not raw decimal exceptions."""
+    contract = _contract()
+
+    with pytest.raises(GateContractError, match="supported decimal range"):
+        _single_comparison(
+            contract,
+            metric_id="quality.score",
+            baseline_value=Decimal("1e-1000000000000000049"),
+            candidate_value=Decimal("2e-1000000000000000049"),
+        )
+
+
+def test_relative_threshold_verdict_is_exact_beyond_50_significant_digits() -> None:
+    """Rounded relative-delta evidence must not flip high-precision thresholds."""
+    from arvp.gates import GatePolicy, RelativeBaselineCriterion, evaluate_gate
+
+    contract = _contract()
+    # strictly below 1/3, but above the prec-50 rounding of 1/3
+    below_one_third = Decimal("0." + "3" * 50 + "1")
+    # strictly above 2/3, equal to the prec-50 rounding of 2/3
+    above_two_thirds = Decimal("0." + "6" * 49 + "7")
+
+    improvement = GatePolicy(
+        "release.default",
+        contract,
+        (
+            RelativeBaselineCriterion(
+                "quality.relative",
+                "quality.score",
+                "minimum_improvement",
+                below_one_third,
+            ),
+        ),
+    )
+    # truth 1/3 >= threshold -> PASS (rounded evidence alone says FAIL)
+    comparison = _single_comparison(
+        contract, metric_id="quality.score", baseline_value=3, candidate_value=4
+    )
+    decision = evaluate_gate(
+        policy=improvement, comparisons=(comparison,), metric_contract=contract
+    )
+    assert decision.verdict == "PASS"
+
+    strict = GatePolicy(
+        "release.default",
+        contract,
+        (
+            RelativeBaselineCriterion(
+                "quality.relative",
+                "quality.score",
+                "minimum_improvement",
+                above_two_thirds,
+            ),
+        ),
+    )
+    decision = evaluate_gate(
+        policy=improvement, comparisons=(comparison,), metric_contract=contract
+    )
+    assert decision.verdict == "PASS"
+
+    # truth 2/3 < above_two_thirds (equal to its rounded evidence) -> FAIL
+    comparison = _single_comparison(
+        contract, metric_id="quality.score", baseline_value=3, candidate_value=5
+    )
+    decision = evaluate_gate(
+        policy=strict, comparisons=(comparison,), metric_contract=contract
+    )
+    assert decision.verdict == "FAIL"
+
+    # minimize direction: truth 1/3 >= threshold -> PASS
+    minimize_comparison = _single_comparison(
+        contract, metric_id="error.rate", baseline_value=3, candidate_value=2
+    )
+    minimize_policy = GatePolicy(
+        "release.default",
+        contract,
+        (
+            RelativeBaselineCriterion(
+                "error.relative",
+                "error.rate",
+                "minimum_improvement",
+                below_one_third,
+            ),
+        ),
+    )
+    decision = evaluate_gate(
+        policy=minimize_policy,
+        comparisons=(minimize_comparison,),
+        metric_contract=contract,
+    )
+    assert decision.verdict == "PASS"
+
+
+def test_no_regression_threshold_verdict_is_exact_beyond_50_digits() -> None:
+    """The negated no-regression limit uses the exact relation as well."""
+    from decimal import getcontext
+
+    from arvp.gates import GatePolicy, RelativeBaselineCriterion, evaluate_gate
+
+    contract = _contract()
+    below_one_third = Decimal("0." + "3" * 50 + "1")
+    policy = GatePolicy(
+        "release.default",
+        contract,
+        (
+            RelativeBaselineCriterion(
+                "quality.relative",
+                "quality.score",
+                "no_regression_beyond",
+                below_one_third,
+            ),
+        ),
+    )
+    # directional truth -1/3 is below -threshold -> FAIL (rounded says PASS)
+    comparison = _single_comparison(
+        contract, metric_id="quality.score", baseline_value=3, candidate_value=2
+    )
+    original_prec = getcontext().prec
+    getcontext().prec = 60
+    try:
+        decision = evaluate_gate(
+            policy=policy, comparisons=(comparison,), metric_contract=contract
+        )
+    finally:
+        getcontext().prec = original_prec
+    assert decision.verdict == "FAIL"
+
+
 def test_gate_v2_public_api_is_exported_from_package_root() -> None:
     import arvp
 
