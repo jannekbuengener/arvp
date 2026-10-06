@@ -319,6 +319,7 @@ def probe_evidence_bundle_schemas() -> None:
     assert EVIDENCE_BUNDLE_CONTRACT_VERSION == "arvp.evidence.v1"
     assert SCHEMA_ASSET_NAMES == (
         "evidence_bundle_v1.json",
+        "evaluation_input_v1.json",
         "evaluation_suite_v1.json",
         "metric_observation_v1.json",
     )
