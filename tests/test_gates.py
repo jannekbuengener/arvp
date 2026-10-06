@@ -1105,6 +1105,62 @@ def test_comparison_delta_arithmetic_is_independent_of_ambient_decimal_context()
     assert len(digits) == 50
 
 
+def test_comparison_handles_full_accepted_decimal_exponent_range() -> None:
+    """MetricContract-accepted extreme exponents compare without raising."""
+    from decimal import getcontext
+
+    contract = _contract()
+
+    high = _single_comparison(
+        contract,
+        metric_id="quality.score",
+        baseline_value=Decimal("1e1000000"),
+        candidate_value=Decimal("1.5e1000000"),
+    )
+    assert high.status == "complete"
+    assert high.absolute_delta == Decimal("5E+999999")
+    assert high.relative_delta == Decimal("0.5")
+
+    low = _single_comparison(
+        contract,
+        metric_id="quality.score",
+        baseline_value=Decimal("1e-1000000"),
+        candidate_value=Decimal("2e-1000000"),
+    )
+    assert low.status == "complete"
+    assert low.absolute_delta == Decimal("1E-1000000")
+    assert low.relative_delta == Decimal("1")
+
+    original_emax = getcontext().Emax
+    original_emin = getcontext().Emin
+    getcontext().Emax = 6
+    getcontext().Emin = -6
+    try:
+        ambient = _single_comparison(
+            contract,
+            metric_id="quality.score",
+            baseline_value=Decimal("1e1000000"),
+            candidate_value=Decimal("1.5e1000000"),
+        )
+    finally:
+        getcontext().Emax = original_emax
+        getcontext().Emin = original_emin
+    assert ambient.fingerprint() == high.fingerprint()
+
+
+def test_comparison_rejects_unrepresentable_arithmetic_deterministically() -> None:
+    """Results outside the Decimal representable range fail as gate-domain errors."""
+    contract = _contract()
+
+    with pytest.raises(GateContractError, match="supported decimal range"):
+        _single_comparison(
+            contract,
+            metric_id="quality.score",
+            baseline_value=Decimal("1e-999999999999999999"),
+            candidate_value=Decimal("1e999999999999999999"),
+        )
+
+
 def test_gate_v2_public_api_is_exported_from_package_root() -> None:
     import arvp
 

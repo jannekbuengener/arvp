@@ -6,7 +6,15 @@ import math
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
-from decimal import Context, Decimal, localcontext
+from decimal import (
+    MAX_EMAX,
+    MIN_EMIN,
+    ROUND_HALF_EVEN,
+    Context,
+    Decimal,
+    Overflow,
+    localcontext,
+)
 from typing import Any, Literal
 
 from arvp.canonical import canonical_hash
@@ -45,12 +53,22 @@ _REASON_ORDER: tuple[ComparisonReason, ...] = (
 )
 _NUMERIC_STATUSES = frozenset({"measured", "derived"})
 # Delta arithmetic runs under a pinned Decimal context: ambient thread context
-# (precision, rounding, traps) must never change comparison evidence or verdicts.
+# (precision, rounding, traps, exponent limits) must never change comparison
+# evidence or verdicts. Emax/Emin cover the full exponent range accepted by
+# MetricContract.value(); a result outside the Decimal representable range
+# raises a gate-domain error instead of leaking decimal.Overflow.
 _DELTA_PRECISION = 50
+_DELTA_CONTEXT = Context(
+    prec=_DELTA_PRECISION,
+    rounding=ROUND_HALF_EVEN,
+    Emax=MAX_EMAX,
+    Emin=MIN_EMIN,
+)
 
 
 class GateContractError(ValueError):
-    """Raised when comparison/gate contracts are structurally malformed."""
+    """Raised when comparison/gate contracts are structurally malformed or when
+    evaluation arithmetic exceeds the supported decimal range."""
 
 
 _STABLE_ID_RE = re.compile(r"^[a-z][a-z0-9_.-]{0,63}$")
@@ -534,16 +552,21 @@ def compare_observation_scope(
                 raise GateContractError(
                     "complete comparison requires numeric metric values"
                 )
-            with localcontext(Context(prec=_DELTA_PRECISION)):
-                absolute_delta = candidate_metric.value - baseline_metric.value
-                if baseline_metric.value == 0:
-                    relative_delta_reason = "baseline_zero"
-                else:
-                    relative_delta = absolute_delta / abs(baseline_metric.value)
-                    if definition.direction == "maximize":
-                        directional_relative_delta = relative_delta
-                    elif definition.direction == "minimize":
-                        directional_relative_delta = -relative_delta
+            try:
+                with localcontext(_DELTA_CONTEXT):
+                    absolute_delta = candidate_metric.value - baseline_metric.value
+                    if baseline_metric.value == 0:
+                        relative_delta_reason = "baseline_zero"
+                    else:
+                        relative_delta = absolute_delta / abs(baseline_metric.value)
+                        if definition.direction == "maximize":
+                            directional_relative_delta = relative_delta
+                        elif definition.direction == "minimize":
+                            directional_relative_delta = -relative_delta
+            except Overflow as exc:
+                raise GateContractError(
+                    "comparison arithmetic exceeds the supported decimal range"
+                ) from exc
             direction_result = _direction_result(definition.direction, absolute_delta)
 
         reasons = tuple(reason for reason in _REASON_ORDER if reason in reason_set)
