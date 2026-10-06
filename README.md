@@ -34,6 +34,11 @@ The package currently exposes focused modules:
 - `arvp.scenarios` — Scenario Harness v2 with decision-relevant request/result identity
 - `arvp.evaluation` — legacy window execution plus resampling, comparison, and gate helpers
 
+Reference adapters outside `src/arvp` (do not import consumer runtimes into core):
+
+- `examples/integer_threshold_classification` — second-domain synthetic proof (#13)
+- `examples/sample_brain_fsld_key_tempo` — Sample Brain FSLD key/tempo artifact integration (#14)
+
 ## Development
 
 Requires Python 3.11 or later.
