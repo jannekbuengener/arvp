@@ -1036,6 +1036,75 @@ def test_gate_decision_rejects_ambiguous_multiple_comparisons_for_metric() -> No
         )
 
 
+def test_gate_decision_ignores_duplicate_comparisons_for_unreferenced_metrics() -> None:
+    """Ambiguity rejection applies to criterion-referenced metrics only."""
+    from arvp.gates import AbsoluteThresholdCriterion, GatePolicy, evaluate_gate
+
+    contract = _contract()
+    decision_metric = _single_comparison(
+        contract,
+        metric_id="quality.score",
+        baseline_value=100,
+        candidate_value=110,
+    )
+    unrelated_a = _single_comparison(
+        contract,
+        metric_id="error.rate",
+        baseline_value=10,
+        candidate_value=9,
+        observation_id="item:001",
+    )
+    unrelated_b = _single_comparison(
+        contract,
+        metric_id="error.rate",
+        baseline_value=10,
+        candidate_value=9,
+        observation_id="item:002",
+    )
+    policy = GatePolicy(
+        "release.default",
+        contract,
+        (AbsoluteThresholdCriterion("quality", "quality.score", "gte", 100),),
+    )
+
+    decision = evaluate_gate(
+        policy=policy,
+        comparisons=(decision_metric, unrelated_a, unrelated_b),
+        metric_contract=contract,
+    )
+
+    assert decision.verdict == "PASS"
+
+
+def test_comparison_delta_arithmetic_is_independent_of_ambient_decimal_context() -> (
+    None
+):
+    """Fingerprints must not change when the caller mutates decimal context."""
+    from decimal import getcontext
+
+    contract = _contract()
+
+    def build():
+        return _single_comparison(
+            contract, metric_id="quality.score", baseline_value=3, candidate_value=4
+        )
+
+    baseline = build()
+    original_prec = getcontext().prec
+    getcontext().prec = 5
+    try:
+        low_precision = build()
+    finally:
+        getcontext().prec = original_prec
+
+    assert low_precision.to_dict() == baseline.to_dict()
+    assert low_precision.fingerprint() == baseline.fingerprint()
+    # pinned precision: 1/3 is stored with a deterministic 50-digit coefficient
+    assert baseline.relative_delta is not None
+    _, digits, _ = baseline.relative_delta.as_tuple()
+    assert len(digits) == 50
+
+
 def test_gate_v2_public_api_is_exported_from_package_root() -> None:
     import arvp
 

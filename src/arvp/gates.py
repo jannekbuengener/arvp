@@ -6,7 +6,7 @@ import math
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Context, Decimal, localcontext
 from typing import Any, Literal
 
 from arvp.canonical import canonical_hash
@@ -44,6 +44,9 @@ _REASON_ORDER: tuple[ComparisonReason, ...] = (
     "not_applicable",
 )
 _NUMERIC_STATUSES = frozenset({"measured", "derived"})
+# Delta arithmetic runs under a pinned Decimal context: ambient thread context
+# (precision, rounding, traps) must never change comparison evidence or verdicts.
+_DELTA_PRECISION = 50
 
 
 class GateContractError(ValueError):
@@ -531,16 +534,17 @@ def compare_observation_scope(
                 raise GateContractError(
                     "complete comparison requires numeric metric values"
                 )
-            absolute_delta = candidate_metric.value - baseline_metric.value
+            with localcontext(Context(prec=_DELTA_PRECISION)):
+                absolute_delta = candidate_metric.value - baseline_metric.value
+                if baseline_metric.value == 0:
+                    relative_delta_reason = "baseline_zero"
+                else:
+                    relative_delta = absolute_delta / abs(baseline_metric.value)
+                    if definition.direction == "maximize":
+                        directional_relative_delta = relative_delta
+                    elif definition.direction == "minimize":
+                        directional_relative_delta = -relative_delta
             direction_result = _direction_result(definition.direction, absolute_delta)
-            if baseline_metric.value == 0:
-                relative_delta_reason = "baseline_zero"
-            else:
-                relative_delta = absolute_delta / abs(baseline_metric.value)
-                if definition.direction == "maximize":
-                    directional_relative_delta = relative_delta
-                elif definition.direction == "minimize":
-                    directional_relative_delta = -relative_delta
 
         reasons = tuple(reason for reason in _REASON_ORDER if reason in reason_set)
         comparisons.append(
@@ -847,6 +851,7 @@ def evaluate_gate(
     if isinstance(comparisons, (str, bytes)) or not isinstance(comparisons, Sequence):
         raise GateContractError("comparisons must be a sequence of MetricComparison")
 
+    policy_metric_ids = {criterion.metric_id for criterion in policy.criteria}
     by_metric: dict[str, MetricComparison] = {}
     for comparison in comparisons:
         if type(comparison) is not MetricComparison:
@@ -857,6 +862,10 @@ def evaluate_gate(
             raise GateContractError(
                 "comparison metric contract fingerprint does not match supplied contract"
             )
+        if comparison.metric_id not in policy_metric_ids:
+            # Outside the evaluation scope: the ambiguity rule applies only to
+            # metrics referenced by a criterion (design: evaluation scope).
+            continue
         if comparison.metric_id in by_metric:
             raise GateContractError(
                 f"multiple comparisons for metric: {comparison.metric_id}"
