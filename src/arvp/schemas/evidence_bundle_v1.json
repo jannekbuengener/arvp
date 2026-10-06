@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arvp.local/schemas/evidence_bundle_v1.json",
+  "title": "ARVP Evidence Bundle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_hash",
+    "baseline_candidate_fingerprint",
+    "candidate_fingerprint",
+    "comparisons",
+    "contract_version",
+    "evidence_fingerprint",
+    "failures",
+    "gate_decision",
+    "gate_policy_fingerprint",
+    "generated_at",
+    "observations",
+    "partition_fingerprint",
+    "partition_id",
+    "run_provenance",
+    "stability",
+    "suite"
+  ],
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "const": "arvp.evidence.v1"
+    },
+    "suite": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "partition_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "partition_fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "candidate_fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "baseline_candidate_fingerprint": {
+      "type": ["string", "null"],
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "run_provenance": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "comparisons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "gate_policy_fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "gate_decision": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "stability": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "failures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence_fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "artifact_hash": {
+      "type": ["string", "null"],
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

@@ -311,14 +311,41 @@ def probe_gate_contracts() -> None:
         assert item.fingerprint() == vector["expected_fingerprint"], vector["name"]
 
 
+def probe_evidence_bundle_schemas() -> None:
+    """Prove packaged Evidence Bundle schemas are reachable from an install."""
+    from arvp.bundle import EVIDENCE_BUNDLE_CONTRACT_VERSION, EvidenceBundle
+    from arvp.schemas import SCHEMA_ASSET_NAMES, load_schema
+
+    assert EVIDENCE_BUNDLE_CONTRACT_VERSION == "arvp.evidence.v1"
+    assert SCHEMA_ASSET_NAMES == (
+        "evidence_bundle_v1.json",
+        "evaluation_suite_v1.json",
+        "metric_observation_v1.json",
+    )
+    for name in SCHEMA_ASSET_NAMES:
+        schema = load_schema(name)
+        assert isinstance(schema, dict)
+        assert "$schema" in schema
+    fixture = (
+        Path(__file__).resolve().parents[1]
+        / "tests"
+        / "fixtures"
+        / "evidence_bundle_v1_golden.json"
+    )
+    payload = json.loads(fixture.read_text(encoding="utf-8"))["bundle"]
+    bundle = EvidenceBundle.from_dict(payload)
+    assert bundle.evidence_fingerprint == payload["evidence_fingerprint"]
+
+
 def main() -> int:
     probe_golden_vectors()
     probe_identity_contracts()
     probe_metric_contracts()
     probe_platform_repeatability()
     probe_gate_contracts()
+    probe_evidence_bundle_schemas()
     print(
-        "platform smoke ok: canonical v2, identity, metric, and gate goldens verified"
+        "platform smoke ok: canonical v2, identity, metric, gate, and evidence bundle verified"
     )
     return 0
 

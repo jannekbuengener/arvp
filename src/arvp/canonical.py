@@ -13,7 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 CANONICAL_CONTRACT_VERSION = "arvp.canonical.v2"
@@ -172,6 +172,61 @@ def canonical_json_dumps(value: Any) -> str:
         ensure_ascii=False,
         separators=(",", ":"),
         sort_keys=True,
+    )
+
+
+def _revive_decimal_extension(payload: dict[str, Any]) -> Decimal:
+    """Revive a canonical ``$arvp`` decimal extension object."""
+    if set(payload) != {"$arvp"}:
+        raise CanonicalizationError("malformed $arvp extension object")
+    body = payload["$arvp"]
+    if type(body) is not dict:
+        raise CanonicalizationError("malformed $arvp extension body")
+    if set(body) != {"coefficient", "exponent", "type"}:
+        raise CanonicalizationError("malformed $arvp extension fields")
+    if body.get("type") != "decimal":
+        raise CanonicalizationError("unsupported $arvp extension type")
+    coefficient = body.get("coefficient")
+    exponent = body.get("exponent")
+    if type(coefficient) is not str or not coefficient:
+        raise CanonicalizationError("invalid $arvp decimal coefficient")
+    if type(exponent) is not int or isinstance(exponent, bool):
+        raise CanonicalizationError("invalid $arvp decimal exponent")
+    try:
+        digits = coefficient[1:] if coefficient.startswith("-") else coefficient
+        if not digits.isdigit():
+            raise ValueError
+        return Decimal(coefficient) * (Decimal(10) ** exponent)
+    except (InvalidOperation, ValueError) as exc:
+        raise CanonicalizationError("invalid $arvp decimal value") from exc
+
+
+def revive_canonical(value: Any) -> Any:
+    """Convert canonical JSON (with ``$arvp`` decimals) back to Python values.
+
+    This is the inverse of ``canonicalize`` for the portable shapes ARVP emits.
+    Malformed ``$arvp`` objects are rejected.
+    """
+    if value is None or type(value) in (bool, int, float, str):
+        if type(value) is float and not math.isfinite(value):
+            raise CanonicalizationError("non-finite float not allowed")
+        if type(value) is str:
+            _validate_string(value, "string value")
+        return value
+    if type(value) is list:
+        return [revive_canonical(item) for item in value]
+    if type(value) is dict:
+        if "$arvp" in value:
+            return _revive_decimal_extension(value)
+        revived: dict[str, Any] = {}
+        for key, item in value.items():
+            if type(key) is not str:
+                raise CanonicalizationError("mapping keys must be strings")
+            _validate_string(key, "mapping key")
+            revived[key] = revive_canonical(item)
+        return revived
+    raise CanonicalizationError(
+        f"unsupported canonical JSON type: {type(value).__name__}"
     )
 
 

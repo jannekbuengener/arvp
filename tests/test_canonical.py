@@ -212,6 +212,22 @@ def test_decimal_extension_keys_sorted() -> None:
     assert d == '{"$arvp":{"coefficient":"1","exponent":0,"type":"decimal"}}'
 
 
+def test_revive_canonical_round_trips_decimal_extensions() -> None:
+    import json
+
+    from arvp.canonical import revive_canonical
+
+    source = {
+        "score": Decimal("0.900"),
+        "nested": [{"delta": Decimal("-1.25")}, None],
+    }
+    parsed = json.loads(canonical_json_dumps(source))
+    revived = revive_canonical(parsed)
+    assert revived["score"] == Decimal("0.9")
+    assert revived["nested"][0]["delta"] == Decimal("-1.25")
+    assert canonical_hash(source) == canonical_hash(revived)
+
+
 def test_decimal_subclass_rejected() -> None:
     class DecimalSubclass(Decimal):
         pass
