@@ -119,6 +119,7 @@ class ScenarioResult:
             "scenario_id": self.scenario_id,
         }
         if self.metrics is not None:
+            assert self.metric_contract is not None
             payload["metric_contract_fingerprint"] = self.metric_contract.fingerprint()
             payload["metrics"] = [value.to_dict() for value in self.metrics]
         if self.failure is not None:

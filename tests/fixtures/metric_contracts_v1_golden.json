@@ -1,0 +1,267 @@
+{
+  "canonical_contract_version": "arvp.canonical.v2",
+  "metric_definition_contract_version": "arvp.metric-definition.v1",
+  "metric_contract_version": "arvp.metric-contract.v1",
+  "metric_value_contract_version": "arvp.metric-value.v1",
+  "observation_contract_version": "arvp.observation.v1",
+  "vectors": [
+    {
+      "name": "definition_search_relevance",
+      "kind": "definition",
+      "definition": {
+        "metric_id": "search.relevance",
+        "direction": "maximize",
+        "unit": "1",
+        "required": true
+      },
+      "expected_json": "{\"contract_version\":\"arvp.metric-definition.v1\",\"direction\":\"maximize\",\"metric_id\":\"search.relevance\",\"required\":true,\"unit\":\"1\"}",
+      "expected_fingerprint": "cb75bed4db62aca0896eb78232bfc1fa4e0888c4cf5ba4852034832401d478d8"
+    },
+    {
+      "name": "definition_tempo_abs_error",
+      "kind": "definition",
+      "definition": {
+        "metric_id": "tempo.abs_error",
+        "direction": "minimize",
+        "unit": "bpm",
+        "required": true
+      },
+      "expected_json": "{\"contract_version\":\"arvp.metric-definition.v1\",\"direction\":\"minimize\",\"metric_id\":\"tempo.abs_error\",\"required\":true,\"unit\":\"bpm\"}",
+      "expected_fingerprint": "d5d041ba0f73144f83d3012663ca1ad99cca67900df356276b5b8fd4b852a77b"
+    },
+    {
+      "name": "metric_contract_three_definitions",
+      "kind": "contract",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "expected_json": "{\"contract_version\":\"arvp.metric-contract.v1\",\"definitions\":[{\"contract_version\":\"arvp.metric-definition.v1\",\"direction\":\"neutral\",\"metric_id\":\"runtime.ms\",\"required\":false,\"unit\":\"ms\"},{\"contract_version\":\"arvp.metric-definition.v1\",\"direction\":\"maximize\",\"metric_id\":\"search.relevance\",\"required\":true,\"unit\":\"1\"},{\"contract_version\":\"arvp.metric-definition.v1\",\"direction\":\"minimize\",\"metric_id\":\"tempo.abs_error\",\"required\":true,\"unit\":\"bpm\"}]}",
+      "expected_fingerprint": "cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba"
+    },
+    {
+      "name": "metric_value_measured",
+      "kind": "value",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "metric_id": "search.relevance",
+      "status": "measured",
+      "value": "0.75",
+      "expected_json": "{\"contract_version\":\"arvp.metric-value.v1\",\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"metric_id\":\"search.relevance\",\"status\":\"measured\",\"value\":{\"$arvp\":{\"coefficient\":\"75\",\"exponent\":-2,\"type\":\"decimal\"}}}",
+      "expected_fingerprint": "9b1843bf427e0a0d29af87f7033030116e32e1750b82adf96a565b518cd2b58f"
+    },
+    {
+      "name": "metric_value_derived",
+      "kind": "value",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "metric_id": "tempo.abs_error",
+      "status": "derived",
+      "value": "2.5",
+      "expected_json": "{\"contract_version\":\"arvp.metric-value.v1\",\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"metric_id\":\"tempo.abs_error\",\"status\":\"derived\",\"value\":{\"$arvp\":{\"coefficient\":\"25\",\"exponent\":-1,\"type\":\"decimal\"}}}",
+      "expected_fingerprint": "e37a2b8795dd33442476ee17d875679993cf7034434e85a23d48e504a7c2637d"
+    },
+    {
+      "name": "metric_value_unknown",
+      "kind": "value",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "metric_id": "runtime.ms",
+      "status": "unknown",
+      "value": null,
+      "expected_json": "{\"contract_version\":\"arvp.metric-value.v1\",\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"metric_id\":\"runtime.ms\",\"status\":\"unknown\"}",
+      "expected_fingerprint": "4c6a03eff5f093de0acf429e86cc3eb7e6b0393351e2f288a49778715a8784ca"
+    },
+    {
+      "name": "metric_value_not_applicable",
+      "kind": "value",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "metric_id": "runtime.ms",
+      "status": "not_applicable",
+      "value": null,
+      "expected_json": "{\"contract_version\":\"arvp.metric-value.v1\",\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"metric_id\":\"runtime.ms\",\"status\":\"not_applicable\"}",
+      "expected_fingerprint": "6be665ef077be0c7f1d229be18ee88058861a30021ab08feecf298ac41bc7fde"
+    },
+    {
+      "name": "observation_baseline",
+      "kind": "observation",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "metric_id": "search.relevance",
+      "status": "measured",
+      "value": "0.70",
+      "candidate": {
+        "candidate_id": "baseline",
+        "implementation_id": "impl.search",
+        "revision": "r1",
+        "configuration": {
+          "depth": 1
+        }
+      },
+      "content_identity": {
+        "schema_version": "arvp.dataset-content.v2",
+        "ordering": "ordered",
+        "record_count": 1,
+        "fingerprint": "1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "partition_id": "validation",
+      "partition_role": "validation",
+      "observation_id": "item:001",
+      "expected_json": "{\"candidate_fingerprint\":\"22c9a133e7780b3888ff4822c673a8d939153e3033cc886294d42b64f21791e6\",\"contract_version\":\"arvp.observation.v1\",\"metric\":{\"contract_version\":\"arvp.metric-value.v1\",\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"metric_id\":\"search.relevance\",\"status\":\"measured\",\"value\":{\"$arvp\":{\"coefficient\":\"7\",\"exponent\":-1,\"type\":\"decimal\"}}},\"observation_id\":\"item:001\",\"partition_fingerprint\":\"ed6226e5747421199ea0dbc035746d95f8d1c333e5dbb93d08bd9543edfc3cb8\",\"partition_id\":\"validation\"}",
+      "expected_fingerprint": "23fdf0dbf3ef72e5f9a83a8f08f4389baf02e7620e45b1e9181a0f56cb7f2e72"
+    },
+    {
+      "name": "observation_candidate",
+      "kind": "observation",
+      "definitions": [
+        {
+          "metric_id": "tempo.abs_error",
+          "direction": "minimize",
+          "unit": "bpm",
+          "required": true
+        },
+        {
+          "metric_id": "search.relevance",
+          "direction": "maximize",
+          "unit": "1",
+          "required": true
+        },
+        {
+          "metric_id": "runtime.ms",
+          "direction": "neutral",
+          "unit": "ms",
+          "required": false
+        }
+      ],
+      "metric_id": "search.relevance",
+      "status": "measured",
+      "value": "0.82",
+      "candidate": {
+        "candidate_id": "candidate",
+        "implementation_id": "impl.search",
+        "revision": "r1",
+        "configuration": {
+          "depth": 2
+        }
+      },
+      "content_identity": {
+        "schema_version": "arvp.dataset-content.v2",
+        "ordering": "ordered",
+        "record_count": 1,
+        "fingerprint": "1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "partition_id": "validation",
+      "partition_role": "validation",
+      "observation_id": "item:001",
+      "expected_json": "{\"candidate_fingerprint\":\"1931bdcd02a31231ad9367022ae7c2c0280d5061bc51ff0b82da389d51ac1ef0\",\"contract_version\":\"arvp.observation.v1\",\"metric\":{\"contract_version\":\"arvp.metric-value.v1\",\"metric_contract_fingerprint\":\"cd8dffce45619a37fa13923dc6c6c6c254799195600e42414fdb61fdea6dfcba\",\"metric_id\":\"search.relevance\",\"status\":\"measured\",\"value\":{\"$arvp\":{\"coefficient\":\"82\",\"exponent\":-2,\"type\":\"decimal\"}}},\"observation_id\":\"item:001\",\"partition_fingerprint\":\"ed6226e5747421199ea0dbc035746d95f8d1c333e5dbb93d08bd9543edfc3cb8\",\"partition_id\":\"validation\"}",
+      "expected_fingerprint": "ac9cb535acfff5c987c1ee95951e08852dd7fc5380b585e4da821bcb95f76d81"
+    }
+  ]
+}
