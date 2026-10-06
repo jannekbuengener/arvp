@@ -1232,6 +1232,35 @@ def test_exact_relative_pass_covers_adjusted_exponent_subtraction_span() -> None
     assert decision.verdict == "FAIL"
 
 
+def test_exact_relative_pass_ignores_zero_quantum_when_sizing_precision() -> None:
+    """Zero's stored exponent must not inflate subtraction precision past MAX_PREC."""
+    from arvp.gates import GatePolicy, RelativeBaselineCriterion, evaluate_gate
+
+    contract = _contract()
+    policy = GatePolicy(
+        "release.default",
+        contract,
+        (
+            RelativeBaselineCriterion(
+                "quality.relative",
+                "quality.score",
+                "no_regression_beyond",
+                Decimal("1"),
+            ),
+        ),
+    )
+    comparison = _single_comparison(
+        contract,
+        metric_id="quality.score",
+        baseline_value=Decimal("1"),
+        candidate_value=Decimal("0E-999999999999999999"),
+    )
+    decision = evaluate_gate(
+        policy=policy, comparisons=(comparison,), metric_contract=contract
+    )
+    assert decision.verdict == "PASS"
+
+
 def test_relative_threshold_verdict_is_exact_beyond_50_significant_digits() -> None:
     """Rounded relative-delta evidence must not flip high-precision thresholds."""
     from arvp.gates import GatePolicy, RelativeBaselineCriterion, evaluate_gate

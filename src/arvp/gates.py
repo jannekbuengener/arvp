@@ -854,6 +854,19 @@ def _relative_margin_interval(actual: Decimal) -> tuple[Decimal, Decimal] | None
         return None
 
 
+def _nonzero_subtraction_span(value: Decimal) -> tuple[int, int] | None:
+    """Return ``(adjusted, tuple_exp)`` for a non-zero finite Decimal.
+
+    Zero contributes no significant digits; its stored quantum/adjusted
+    exponent must not inflate the subtraction precision bound.
+    """
+    if value.is_zero():
+        return None
+    _, _, exponent = value.as_tuple()
+    assert isinstance(exponent, int), "exponent must be int for finite Decimal"
+    return value.adjusted(), exponent
+
+
 def _exact_relative_pass(
     *,
     baseline_value: Decimal,
@@ -862,21 +875,30 @@ def _exact_relative_pass(
     direction: MetricDirection,
 ) -> bool:
     """Exact ``sign * (candidate - baseline) >= limit * |baseline|`` relation."""
-    _, _, candidate_exp = candidate_value.as_tuple()
-    _, baseline_digits, baseline_exp = baseline_value.as_tuple()
+    _, baseline_digits, _ = baseline_value.as_tuple()
     _, limit_digits, _ = limit.as_tuple()
-    # After contract validation, operands are finite: exponents are ints
-    assert isinstance(candidate_exp, int), "exponent must be int for finite Decimal"
-    assert isinstance(baseline_exp, int), "exponent must be int for finite Decimal"
     # Exact subtraction needs digits from the highest MSD (adjusted exponent)
-    # through the lowest LSD (tuple exponent). Using tuple exponents for the
-    # high end under-sizes the span when coefficients are longer than one digit.
-    difference_precision = (
-        max(candidate_value.adjusted(), baseline_value.adjusted())
-        - min(candidate_exp, baseline_exp)
-        + 1
-        + _EXACT_RELATION_SLACK
-    )
+    # through the lowest LSD (tuple exponent) among non-zero operands. Using
+    # tuple exponents for the high end under-sizes the span when coefficients
+    # are longer than one digit; including a zero's arbitrary quantum can
+    # oversize past MAX_PREC even though the difference is exact.
+    spans = [
+        span
+        for span in (
+            _nonzero_subtraction_span(candidate_value),
+            _nonzero_subtraction_span(baseline_value),
+        )
+        if span is not None
+    ]
+    if spans:
+        difference_precision = (
+            max(adjusted for adjusted, _ in spans)
+            - min(exponent for _, exponent in spans)
+            + 1
+            + _EXACT_RELATION_SLACK
+        )
+    else:
+        difference_precision = 1 + _EXACT_RELATION_SLACK
     product_precision = len(limit_digits) + len(baseline_digits) + _EXACT_RELATION_SLACK
     precision = max(difference_precision, product_precision)
     if precision > MAX_PREC:
