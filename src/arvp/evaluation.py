@@ -1,4 +1,4 @@
-"""Evaluation splits, deterministic stability summaries, comparison, and gates."""
+"""Legacy evaluation windows/stability plus bootstrap gate/ranking compatibility."""
 
 from __future__ import annotations
 
@@ -266,6 +266,8 @@ def resample_stability(
 
 @dataclass(frozen=True, slots=True)
 class GateCriterion:
+    """Legacy bootstrap threshold criterion; new code uses arvp.gates."""
+
     metric: str
     operator: Literal["gte", "lte"]
     threshold: Decimal
@@ -279,6 +281,8 @@ class GateCriterion:
 
 @dataclass(frozen=True, slots=True)
 class GateDecision:
+    """Legacy boolean decision; v0.2 uses arvp.gates.GateDecision."""
+
     passed: bool
     criteria: tuple[dict[str, Any], ...]
 
@@ -289,7 +293,7 @@ class GateDecision:
 def evaluate_gate(
     metrics: Mapping[str, object], criteria: Sequence[GateCriterion]
 ) -> GateDecision:
-    """Evaluate explicit numeric criteria; missing metrics fail closed."""
+    """Legacy boolean gate; v0.2 callers should use arvp.gates.evaluate_gate."""
     if not isinstance(metrics, Mapping):
         raise EvaluationError("metrics must be a mapping")
     if not criteria:
@@ -324,6 +328,8 @@ def evaluate_gate(
 
 @dataclass(frozen=True, slots=True)
 class CandidateScore:
+    """Legacy scalar ranking evidence; not the v0.2 decision mechanism."""
+
     candidate_id: str
     score: Decimal
     evidence_fingerprint: str
@@ -338,7 +344,7 @@ class CandidateScore:
 
 
 def rank_candidates(candidates: Sequence[CandidateScore]) -> tuple[CandidateScore, ...]:
-    """Return a stable descending score order, breaking ties by candidate id."""
+    """Legacy scalar ranking helper; new evaluation must use explicit metrics/policy."""
     if not candidates:
         raise EvaluationError("candidates must not be empty")
     if not all(isinstance(candidate, CandidateScore) for candidate in candidates):

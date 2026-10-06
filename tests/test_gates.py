@@ -1034,3 +1034,44 @@ def test_gate_decision_rejects_ambiguous_multiple_comparisons_for_metric() -> No
             comparisons=(first, second),
             metric_contract=contract,
         )
+
+
+def test_gate_v2_public_api_is_exported_from_package_root() -> None:
+    import arvp
+
+    expected = {
+        "METRIC_COMPARISON_CONTRACT_VERSION",
+        "GATE_POLICY_CONTRACT_VERSION",
+        "GATE_DECISION_CONTRACT_VERSION",
+        "ComparisonStatus",
+        "ComparisonReason",
+        "RelativeDeltaReason",
+        "DirectionResult",
+        "GateOperator",
+        "RelativeMode",
+        "GateVerdict",
+        "CriterionOutcome",
+        "GateContractError",
+        "MetricComparison",
+        "AbsoluteThresholdCriterion",
+        "RelativeBaselineCriterion",
+        "GatePolicy",
+        "CriterionResult",
+        "GateDecision",
+        "compare_observation_scope",
+        "evaluate_gate",
+    }
+    assert expected.issubset(set(arvp.__all__))
+    for name in expected:
+        assert hasattr(arvp, name)
+
+
+def test_legacy_gate_and_scalar_ranking_are_not_root_exported() -> None:
+    import arvp
+
+    legacy = {
+        "CandidateScore",
+        "rank_candidates",
+        "GateCriterion",
+    }
+    assert legacy.isdisjoint(set(arvp.__all__))
