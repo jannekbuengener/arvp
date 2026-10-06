@@ -244,6 +244,38 @@ def test_load_all_revalidates_lifecycle_history(tmp_path) -> None:
         JsonlRunRegistry(path).load_all()
 
 
+def test_load_rejects_terminal_with_rewritten_start(tmp_path) -> None:
+    path = tmp_path / "registry.jsonl"
+    fp = "a" * 64
+    run_id = "run-" + ("a" * 12) + "-0001"
+    lines = [
+        {
+            "run_id": run_id,
+            "provenance_fingerprint": fp,
+            "schema_version": RUN_RECORD_SCHEMA_VERSION,
+            "started_at_utc": "2026-01-02T00:00:00Z",
+            "status": "running",
+        },
+        {
+            "run_id": run_id,
+            "provenance_fingerprint": fp,
+            "schema_version": RUN_RECORD_SCHEMA_VERSION,
+            "started_at_utc": "2026-01-01T00:00:00Z",
+            "finished_at_utc": "2026-01-01T00:00:01Z",
+            "status": "completed",
+        },
+    ]
+    path.write_text(
+        "\n".join(
+            __import__("json").dumps(item, separators=(",", ":")) for item in lines
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ProvenanceError, match="preserve started_at_utc"):
+        JsonlRunRegistry(path).load_all()
+
+
 def test_canonical_utc_normalizes_equivalent_forms() -> None:
     assert canonicalize_utc("2026-10-05T12:00:00+00:00", "t") == "2026-10-05T12:00:00Z"
     assert canonicalize_utc("2026-10-05T12:00:00Z", "t") == "2026-10-05T12:00:00Z"
@@ -351,3 +383,53 @@ def test_first_record_must_be_running(tmp_path) -> None:
 def test_suite_contract_version_constant() -> None:
     assert EVALUATION_SUITE_CONTRACT_VERSION == "arvp.evaluation-suite.v1"
     assert _suite().contract_version == EVALUATION_SUITE_CONTRACT_VERSION
+
+
+def test_shared_display_run_id_allows_distinct_provenance_lifecycles(tmp_path) -> None:
+    prefix = "a" * 12
+    fp_a = prefix + ("1" * 52)
+    fp_b = prefix + ("2" * 52)
+    run_id = f"run-{prefix}-0001"
+    registry = JsonlRunRegistry(tmp_path / "registry.jsonl")
+    registry.append(
+        RunRecord(
+            run_id=run_id,
+            provenance_fingerprint=fp_a,
+            status="running",
+            started_at_utc="2026-10-05T12:00:00Z",
+        )
+    )
+    # Distinct fingerprint sharing the display run_id must still be recordable.
+    registry.append(
+        RunRecord(
+            run_id=run_id,
+            provenance_fingerprint=fp_b,
+            status="running",
+            started_at_utc="2026-10-05T13:00:00Z",
+        )
+    )
+    assert len(registry.load_all()) == 2
+
+
+def test_terminal_must_preserve_running_started_at(tmp_path) -> None:
+    fp = "a" * 64
+    run_id = "run-" + ("a" * 12) + "-0001"
+    registry = JsonlRunRegistry(tmp_path / "registry.jsonl")
+    registry.append(
+        RunRecord(
+            run_id=run_id,
+            provenance_fingerprint=fp,
+            status="running",
+            started_at_utc="2026-01-02T00:00:00Z",
+        )
+    )
+    with pytest.raises(ProvenanceError, match="preserve started_at_utc"):
+        registry.append(
+            RunRecord(
+                run_id=run_id,
+                provenance_fingerprint=fp,
+                status="completed",
+                started_at_utc="2026-01-01T00:00:00Z",
+                finished_at_utc="2026-01-01T00:00:01Z",
+            )
+        )

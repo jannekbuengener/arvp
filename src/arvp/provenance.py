@@ -342,33 +342,42 @@ def _attempt_from_run_id(run_id: str) -> int:
     return int(run_id.rsplit("-", 1)[1])
 
 
+def _attempt_key(record: RunRecord) -> tuple[str, int]:
+    """Lifecycle identity: full provenance fingerprint + attempt number."""
+    return record.provenance_fingerprint, _attempt_from_run_id(record.run_id)
+
+
 def _validate_lifecycle_append(
     existing: Sequence[RunRecord], incoming: RunRecord
 ) -> None:
-    """Enforce allowed transitions for one run_id under single-writer append."""
-    same = [record for record in existing if record.run_id == incoming.run_id]
+    """Enforce allowed transitions for one provenance attempt (single-writer).
+
+    Display ``run_id`` prefixes may collide across distinct fingerprints; lifecycle
+    state is keyed by full provenance fingerprint + attempt, not by display ID alone.
+    """
+    same = [
+        record for record in existing if _attempt_key(record) == _attempt_key(incoming)
+    ]
     if not same:
         if incoming.status != "running":
-            raise ProvenanceError("first record for a run_id must have status running")
-        return
-
-    for record in same:
-        if record.provenance_fingerprint != incoming.provenance_fingerprint:
             raise ProvenanceError(
-                "run_id already bound to a different provenance fingerprint"
+                "first record for a provenance attempt must have status running"
             )
+        return
 
     last = same[-1]
     if last.status in _TERMINAL_STATUSES:
-        raise ProvenanceError(
-            f"run_id {incoming.run_id} already terminal ({last.status})"
-        )
+        raise ProvenanceError(f"provenance attempt already terminal ({last.status})")
     if last.status == "running":
         if incoming.status == "running":
-            raise ProvenanceError("duplicate running record for run_id")
+            raise ProvenanceError("duplicate running record for provenance attempt")
         if incoming.status not in _TERMINAL_STATUSES:
             raise ProvenanceError(
                 "running records may only transition to completed or failed"
+            )
+        if incoming.started_at_utc != last.started_at_utc:
+            raise ProvenanceError(
+                "terminal record must preserve started_at_utc from running record"
             )
         return
     raise ProvenanceError(f"illegal lifecycle state: {last.status}")
