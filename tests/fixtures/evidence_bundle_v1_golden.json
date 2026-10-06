@@ -1,0 +1,170 @@
+{
+  "bundle": {
+    "artifact_hash": "a21126c5fc4a95d0b86ff3eab15e83345f7d7057c88973c70cdacc144f029856",
+    "baseline_candidate_fingerprint": "54aac424c285bf41b4585eee01fc5288d1057d4fcb1f911443ce4155c5ac6efd",
+    "candidate_fingerprint": "6eac372a5377e8eb8b4e8614a32aafdada9fa978abea504c8b0ede4364b0f530",
+    "comparisons": [
+      {
+        "absolute_delta": {
+          "$arvp": {
+            "coefficient": "1",
+            "exponent": -1,
+            "type": "decimal"
+          }
+        },
+        "baseline_candidate_fingerprint": "54aac424c285bf41b4585eee01fc5288d1057d4fcb1f911443ce4155c5ac6efd",
+        "baseline_compatible": true,
+        "baseline_metric_contract_fingerprint": "d24559dc103c07996c683b32f0fa0fc2bc1fe29d7351cc782fbf33796ec95960",
+        "baseline_partition_fingerprint": "f69423b73f662830a4f64061524d1baa4eb4611e9fd1f90cd0bdbef19976f9a1",
+        "baseline_partition_id": "validation",
+        "baseline_status": "measured",
+        "baseline_value": {
+          "$arvp": {
+            "coefficient": "8",
+            "exponent": -1,
+            "type": "decimal"
+          }
+        },
+        "candidate_compatible": true,
+        "candidate_fingerprint": "6eac372a5377e8eb8b4e8614a32aafdada9fa978abea504c8b0ede4364b0f530",
+        "candidate_metric_contract_fingerprint": "d24559dc103c07996c683b32f0fa0fc2bc1fe29d7351cc782fbf33796ec95960",
+        "candidate_partition_fingerprint": "f69423b73f662830a4f64061524d1baa4eb4611e9fd1f90cd0bdbef19976f9a1",
+        "candidate_partition_id": "validation",
+        "candidate_status": "measured",
+        "candidate_value": {
+          "$arvp": {
+            "coefficient": "9",
+            "exponent": -1,
+            "type": "decimal"
+          }
+        },
+        "contract_version": "arvp.metric-comparison.v1",
+        "direction": "maximize",
+        "direction_result": "improved",
+        "directional_relative_delta": {
+          "$arvp": {
+            "coefficient": "125",
+            "exponent": -3,
+            "type": "decimal"
+          }
+        },
+        "metric_contract_fingerprint": "d24559dc103c07996c683b32f0fa0fc2bc1fe29d7351cc782fbf33796ec95960",
+        "metric_id": "quality.score",
+        "observation_id": "obs-1",
+        "reasons": [],
+        "relative_delta": {
+          "$arvp": {
+            "coefficient": "125",
+            "exponent": -3,
+            "type": "decimal"
+          }
+        },
+        "relative_delta_reason": null,
+        "required": true,
+        "status": "complete",
+        "unit": "1"
+      }
+    ],
+    "contract_version": "arvp.evidence.v1",
+    "evidence_fingerprint": "38569ee34cf9630a617d4dfa45ef75bee0fca32a95700b40dea93bdc4ec727d9",
+    "failures": [],
+    "gate_decision": {
+      "contract_version": "arvp.gate-decision.v1",
+      "criteria": [
+        {
+          "actual": {
+            "$arvp": {
+              "coefficient": "9",
+              "exponent": -1,
+              "type": "decimal"
+            }
+          },
+          "comparison_fingerprint": "92278dba120e378c2c0b993b4ed86a9642164e0446c40c4d3e6dc15749c2304e",
+          "criterion": {
+            "criterion_id": "quality.floor",
+            "criterion_type": "absolute_threshold",
+            "metric_id": "quality.score",
+            "operator": "gte",
+            "threshold": {
+              "$arvp": {
+                "coefficient": "5",
+                "exponent": -1,
+                "type": "decimal"
+              }
+            }
+          },
+          "outcome": "pass",
+          "reason": null
+        }
+      ],
+      "metric_contract_fingerprint": "d24559dc103c07996c683b32f0fa0fc2bc1fe29d7351cc782fbf33796ec95960",
+      "policy_fingerprint": "c7ee56e337f0ea7ff0d2c16d3447b06739577b52ff02c6f80b8d9901def8d0fe",
+      "verdict": "PASS"
+    },
+    "gate_policy_fingerprint": "c7ee56e337f0ea7ff0d2c16d3447b06739577b52ff02c6f80b8d9901def8d0fe",
+    "generated_at": "2026-10-06T12:00:00Z",
+    "observations": [
+      {
+        "candidate_fingerprint": "6eac372a5377e8eb8b4e8614a32aafdada9fa978abea504c8b0ede4364b0f530",
+        "contract_version": "arvp.observation.v1",
+        "metric": {
+          "contract_version": "arvp.metric-value.v1",
+          "metric_contract_fingerprint": "d24559dc103c07996c683b32f0fa0fc2bc1fe29d7351cc782fbf33796ec95960",
+          "metric_id": "quality.score",
+          "status": "measured",
+          "value": {
+            "$arvp": {
+              "coefficient": "9",
+              "exponent": -1,
+              "type": "decimal"
+            }
+          }
+        },
+        "observation_id": "obs-1",
+        "partition_fingerprint": "f69423b73f662830a4f64061524d1baa4eb4611e9fd1f90cd0bdbef19976f9a1",
+        "partition_id": "validation"
+      }
+    ],
+    "partition_fingerprint": "f69423b73f662830a4f64061524d1baa4eb4611e9fd1f90cd0bdbef19976f9a1",
+    "partition_id": "validation",
+    "run_provenance": {
+      "arvp_version": "0.1.0-test",
+      "candidate_fingerprint": "6eac372a5377e8eb8b4e8614a32aafdada9fa978abea504c8b0ede4364b0f530",
+      "code_revision": "deadbeef",
+      "configuration": {
+        "seed": 7
+      },
+      "contract_version": "arvp.run-provenance.v2",
+      "partition_fingerprint": "f69423b73f662830a4f64061524d1baa4eb4611e9fd1f90cd0bdbef19976f9a1",
+      "partition_id": "validation",
+      "suite_fingerprint": "5d147de567f096e67545a7f9a64c3c282eca962a443b3b55bfb1c20ce2883e73"
+    },
+    "stability": [],
+    "suite": {
+      "baseline_candidate_fingerprint": "54aac424c285bf41b4585eee01fc5288d1057d4fcb1f911443ce4155c5ac6efd",
+      "content_identity": {
+        "fingerprint": "dce6fe4101fd5514a83b613432a12f70df49b6be25b2db21a9a6628ad2a8aa57",
+        "ordering": "ordered",
+        "record_count": 1,
+        "schema_version": "arvp.dataset-content.v2"
+      },
+      "contract_version": "arvp.evaluation-suite.v1",
+      "gate_policy_fingerprint": "c7ee56e337f0ea7ff0d2c16d3447b06739577b52ff02c6f80b8d9901def8d0fe",
+      "metric_contract_fingerprint": "d24559dc103c07996c683b32f0fa0fc2bc1fe29d7351cc782fbf33796ec95960",
+      "partitions": [
+        {
+          "content_identity": {
+            "fingerprint": "e41b72f01552b91e4e5369783c236220d50bce36a03a45c52bdc9a742816f51c",
+            "ordering": "ordered",
+            "record_count": 1,
+            "schema_version": "arvp.dataset-content.v2"
+          },
+          "contract_version": "arvp.evaluation-partition.v1",
+          "partition_id": "validation",
+          "role": "validation"
+        }
+      ],
+      "suite_id": "release.default"
+    }
+  }
+}

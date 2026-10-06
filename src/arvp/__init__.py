@@ -1,5 +1,15 @@
 """ARVP: deterministic validation, evaluation, and experiment primitives."""
 
+from arvp.bundle import (
+    EVIDENCE_BUNDLE_CONTRACT_VERSION,
+    EvidenceBundle,
+    EvidenceBundleError,
+    compute_artifact_hash,
+    compute_evidence_fingerprint,
+    read_evidence_bundle,
+    semantic_payload,
+    write_evidence_bundle,
+)
 from arvp.canonical import (
     CANONICAL_CONTRACT_VERSION,
     CanonicalizationError,
@@ -76,6 +86,7 @@ from arvp.provenance import (
     canonicalize_utc,
     default_arvp_version,
 )
+from arvp.schemas import SCHEMA_ASSET_NAMES, SchemaAssetError, load_schema, schema_path
 from arvp.stability import (
     STABILITY_CONFIG_CONTRACT_VERSION,
     STABILITY_RESULT_CONTRACT_VERSION,
@@ -98,6 +109,7 @@ __all__ = [
     "CONTENT_IDENTITY_SCHEMA_VERSION",
     "EVALUATION_PARTITION_CONTRACT_VERSION",
     "EVALUATION_SUITE_CONTRACT_VERSION",
+    "EVIDENCE_BUNDLE_CONTRACT_VERSION",
     "FAILURE_EVIDENCE_VERSION",
     "GATE_DECISION_CONTRACT_VERSION",
     "GATE_POLICY_CONTRACT_VERSION",
@@ -109,6 +121,7 @@ __all__ = [
     "OBSERVATION_CONTRACT_VERSION",
     "RUN_PROVENANCE_CONTRACT_VERSION",
     "RUN_RECORD_SCHEMA_VERSION",
+    "SCHEMA_ASSET_NAMES",
     "STABILITY_CONFIG_CONTRACT_VERSION",
     "STABILITY_RESULT_CONTRACT_VERSION",
     "AbsoluteThresholdCriterion",
@@ -125,6 +138,8 @@ __all__ = [
     "DirectionResult",
     "EvaluationPartition",
     "EvaluationSuite",
+    "EvidenceBundle",
+    "EvidenceBundleError",
     "FailureCode",
     "FailureEvidence",
     "FingerprintFormatError",
@@ -152,6 +167,7 @@ __all__ = [
     "RelativeMode",
     "RunProvenance",
     "RunRecord",
+    "SchemaAssetError",
     "StabilityConfig",
     "StabilityError",
     "StabilityStatus",
@@ -160,10 +176,17 @@ __all__ = [
     "canonical_json_dumps",
     "canonicalize_utc",
     "compare_observation_scope",
+    "compute_artifact_hash",
+    "compute_evidence_fingerprint",
     "default_arvp_version",
     "evaluate_gate",
+    "load_schema",
     "paired_resample_stability",
+    "read_evidence_bundle",
+    "schema_path",
+    "semantic_payload",
     "validate_fingerprint",
     "validate_observations",
     "validate_portable_metadata",
+    "write_evidence_bundle",
 ]

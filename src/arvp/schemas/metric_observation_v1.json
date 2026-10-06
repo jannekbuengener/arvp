@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arvp.local/schemas/metric_observation_v1.json",
+  "title": "ARVP Metric Observation Evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "candidate_fingerprint",
+    "contract_version",
+    "metric",
+    "observation_id",
+    "partition_fingerprint",
+    "partition_id"
+  ],
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "const": "arvp.observation.v1"
+    },
+    "observation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "candidate_fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "partition_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "partition_fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "contract_version",
+        "metric_contract_fingerprint",
+        "metric_id",
+        "status"
+      ],
+      "properties": {
+        "contract_version": {
+          "type": "string"
+        },
+        "metric_contract_fingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "metric_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string"
+        },
+        "value": true
+      }
+    }
+  }
+}

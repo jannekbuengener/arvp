@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arvp.local/schemas/evaluation_suite_v1.json",
+  "title": "ARVP EvaluationSuite v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "baseline_candidate_fingerprint",
+    "content_identity",
+    "contract_version",
+    "gate_policy_fingerprint",
+    "metric_contract_fingerprint",
+    "partitions",
+    "suite_id"
+  ],
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "const": "arvp.evaluation-suite.v1"
+    },
+    "suite_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+    },
+    "content_identity": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "partitions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "metric_contract_fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "gate_policy_fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "baseline_candidate_fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}
