@@ -42,7 +42,8 @@ Display form: `run-<12 hex of provenance fingerprint>-<4 digit attempt>`.
 
 - attempt is an integer in `1..MAX_ATTEMPT` (`MAX_ATTEMPT = 9999`)
 - overflow fails closed
-- the 12-hex prefix is a display aid only
+- the 12-hex prefix is a **display aid only**
+- `run_id` is **not globally unique**: distinct full provenance fingerprints that share a 12-hex prefix may emit the same display `run_id` for the same attempt number
 
 `JsonlRunRegistry.next_attempt()` selects attempts by the **full** provenance fingerprint so shortened-ID collisions cannot mix attempts.
 
@@ -50,16 +51,17 @@ Display form: `run-<12 hex of provenance fingerprint>-<4 digit attempt>`.
 
 Records carry `schema_version = arvp.run-record.v2`. Missing/foreign schema versions fail closed.
 
-Allowed transitions for one `run_id`:
+Lifecycle identity is `(provenance_fingerprint, attempt)`, not the display `run_id` alone. Allowed transitions for one provenance attempt:
 
 1. first record must be `running`
 2. `running` → `completed` or `failed`
 3. terminal states reject further appends (including duplicate terminals)
-4. duplicate `running` is rejected
+4. duplicate `running` for the same provenance attempt is rejected
+5. terminal records must preserve `started_at_utc` from the preceding `running` record
 
 Timestamps are canonicalized to UTC `Z` form (`canonicalize_utc`).
 
-Malformed JSONL lines fail closed.
+Malformed JSONL lines fail closed. Load and append both revalidate the full lifecycle history.
 
 ## Source-of-truth boundary
 
