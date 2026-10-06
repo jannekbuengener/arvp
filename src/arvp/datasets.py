@@ -4,19 +4,20 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from arvp.canonical import (
     CanonicalizationError,
+    FingerprintFormatError,
     canonical_hash,
     canonical_json_dumps,
+    validate_fingerprint,
 )
-from arvp.evidence import (
-    PortableEvidenceError,
-    validate_portable_metadata,
-)
+from arvp.evidence import PortableEvidenceError, validate_portable_metadata
 
-CONTENT_IDENTITY_SCHEMA_VERSION = "arvp.dataset-content.v1"
+CONTENT_IDENTITY_SCHEMA_VERSION = "arvp.dataset-content.v2"
+DatasetOrdering = Literal["ordered", "unordered"]
+_VALID_ORDERINGS = frozenset({"ordered", "unordered"})
 
 
 class DatasetIdentityError(ValueError):
@@ -29,13 +30,10 @@ def _require_text(value: object, field: str) -> str:
     return value.strip()
 
 
-def assert_evidence_safe(value: Any) -> None:
-    """Fail closed when evidence could include a path, secret, or DSN.
-
-    Delegates to the shared portable evidence boundary.
-    """
+def assert_evidence_safe(value: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate and defensively copy portable dataset metadata."""
     try:
-        validate_portable_metadata(value)
+        return validate_portable_metadata(value)
     except PortableEvidenceError as exc:
         raise DatasetIdentityError(str(exc)) from exc
 
@@ -53,34 +51,19 @@ class DatasetRequest:
         _require_text(self.revision, "revision")
         if not isinstance(self.parameters, Mapping):
             raise DatasetIdentityError("parameters must be a mapping")
-
-        # Validate keys: exact str, not "$arvp"
-        for key in self.parameters.keys():
+        for key in self.parameters:
             if type(key) is not str:
                 raise DatasetIdentityError("parameter keys must be strings")
             if key == "$arvp":
                 raise DatasetIdentityError(r"reserved key '\$arvp' not allowed")
-
-        # Copy original portable values
-        copied = dict(self.parameters)
-
-        # Evidence safety (shared boundary)
-        assert_evidence_safe(copied)
-
-        # Canonicalizability check (fails if any value not portable)
-        try:
-            canonical_json_dumps(copied)
-        except CanonicalizationError as exc:
-            raise DatasetIdentityError(
-                f"parameters not canonicalizable: {exc}"
-            ) from exc
-
+        copied = assert_evidence_safe(dict(self.parameters))
         object.__setattr__(self, "parameters", copied)
 
     def to_dict(self) -> dict[str, Any]:
+        parameters = assert_evidence_safe(dict(self.parameters))
         return {
             "dataset_id": self.dataset_id,
-            "parameters": dict(self.parameters),
+            "parameters": parameters,
             "revision": self.revision,
         }
 
@@ -90,15 +73,31 @@ class DatasetRequest:
 
 @dataclass(frozen=True, slots=True)
 class DatasetContentIdentity:
-    """Versioned identity of selected, loaded content rather than its location."""
+    """Self-validating identity of loaded dataset content."""
 
     schema_version: str
+    ordering: DatasetOrdering
     record_count: int
     fingerprint: str
+
+    def __post_init__(self) -> None:
+        if self.schema_version != CONTENT_IDENTITY_SCHEMA_VERSION:
+            raise DatasetIdentityError(
+                f"schema_version must be {CONTENT_IDENTITY_SCHEMA_VERSION!r}"
+            )
+        if type(self.ordering) is not str or self.ordering not in _VALID_ORDERINGS:
+            raise DatasetIdentityError("ordering must be 'ordered' or 'unordered'")
+        if type(self.record_count) is not int or self.record_count < 0:
+            raise DatasetIdentityError("record_count must be a non-negative integer")
+        try:
+            validate_fingerprint(self.fingerprint, "fingerprint")
+        except FingerprintFormatError as exc:
+            raise DatasetIdentityError(str(exc)) from exc
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "fingerprint": self.fingerprint,
+            "ordering": self.ordering,
             "record_count": self.record_count,
             "schema_version": self.schema_version,
         }
@@ -108,31 +107,24 @@ def identify_content(
     records: Sequence[Mapping[str, Any]],
     *,
     fields: Sequence[str],
-    order_by: str | None = None,
-    schema_version: str = CONTENT_IDENTITY_SCHEMA_VERSION,
+    ordering: DatasetOrdering,
 ) -> DatasetContentIdentity:
-    """Fingerprint explicitly selected record fields.
+    """Fingerprint caller-selected portable record fields.
 
-    Callers choose the portable semantic fields. This prevents an accidental
-    path, credential, provider-specific metadata, or unrelated field from
-    entering the identity. ``order_by`` makes record order provider-neutral.
-
-    The ``order_by`` field uses canonical JSON total order as identity sort key,
-    not numeric/lexical order. This ensures provider-neutral deterministic
-    fingerprints. Example: ``1``, ``2``, ``10`` sort as ``1``, ``10``, ``2``
-    (JSON string order).
+    ``ordered`` preserves input record order exactly. ``unordered`` sorts the
+    selected records by their Canonical-v2 JSON representation while preserving
+    duplicate multiplicity. ARVP never coerces domain values into guessed
+    equivalence; callers normalize domain semantics before calling this function.
     """
-    _require_text(schema_version, "schema_version")
-    if not records:
-        raise DatasetIdentityError("records must not be empty")
+    if type(ordering) is not str or ordering not in _VALID_ORDERINGS:
+        raise DatasetIdentityError("ordering must be 'ordered' or 'unordered'")
+
     selected_fields = tuple(_require_text(field, "field") for field in fields)
     if not selected_fields or len(set(selected_fields)) != len(selected_fields):
         raise DatasetIdentityError(
             "fields must be a non-empty sequence of unique strings"
         )
     assert_evidence_safe({field: None for field in selected_fields})
-    if order_by is not None and order_by not in selected_fields:
-        raise DatasetIdentityError("order_by must be one of fields")
 
     selected_records: list[dict[str, Any]] = []
     for index, record in enumerate(records):
@@ -146,22 +138,22 @@ def identify_content(
         selected_records.append({field: record[field] for field in selected_fields})
 
     try:
-        if order_by is not None:
-            selected_records.sort(
-                key=lambda record: (
-                    canonical_json_dumps(record[order_by]),
-                    canonical_hash(record),
-                )
-            )
-
-        payload = {"records": selected_records, "schema_version": schema_version}
-        assert_evidence_safe(payload)
-        fingerprint = canonical_hash(payload)
+        if ordering == "unordered":
+            selected_records.sort(key=canonical_json_dumps)
+        payload = {
+            "fields": sorted(selected_fields),
+            "ordering": ordering,
+            "records": selected_records,
+            "schema_version": CONTENT_IDENTITY_SCHEMA_VERSION,
+        }
+        safe_payload = assert_evidence_safe(payload)
+        fingerprint = canonical_hash(safe_payload)
     except CanonicalizationError as exc:
         raise DatasetIdentityError(f"content not canonicalizable: {exc}") from exc
 
     return DatasetContentIdentity(
-        schema_version=schema_version,
+        schema_version=CONTENT_IDENTITY_SCHEMA_VERSION,
+        ordering=ordering,
         record_count=len(selected_records),
         fingerprint=fingerprint,
     )
