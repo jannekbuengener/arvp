@@ -459,3 +459,140 @@ def test_comparison_rejects_both_sides_empty() -> None:
         compare_observation_scope(
             baseline=(), candidate=(), metric_contract=_contract()
         )
+
+
+def test_policy_fingerprint_is_independent_of_criterion_input_order() -> None:
+    from arvp.gates import (
+        AbsoluteThresholdCriterion,
+        GatePolicy,
+        RelativeBaselineCriterion,
+    )
+
+    contract = _contract()
+    quality = AbsoluteThresholdCriterion("quality", "quality.score", "gte", 100)
+    regression = RelativeBaselineCriterion(
+        "error.regression", "error.rate", "no_regression_beyond", Decimal("0.05")
+    )
+
+    first = GatePolicy("release.default", contract, (quality, regression))
+    second = GatePolicy("release.default", contract, (regression, quality))
+
+    assert first.metric_contract_fingerprint == contract.fingerprint()
+    assert [criterion.criterion_id for criterion in first.criteria] == [
+        "error.regression",
+        "quality",
+    ]
+    assert first.to_dict() == second.to_dict()
+    assert first.fingerprint() == second.fingerprint()
+
+
+@pytest.mark.parametrize("identifier", ["", "Upper", "_bad", "has space", "a" * 65])
+def test_policy_rejects_invalid_policy_and_criterion_ids(identifier: str) -> None:
+    from arvp.gates import AbsoluteThresholdCriterion, GatePolicy
+
+    contract = _contract()
+    if identifier != "release.default":
+        with pytest.raises(GateContractError, match="criterion_id"):
+            AbsoluteThresholdCriterion(identifier, "quality.score", "gte", 1)
+        with pytest.raises(GateContractError, match="policy_id"):
+            GatePolicy(
+                identifier,
+                contract,
+                (AbsoluteThresholdCriterion("quality", "quality.score", "gte", 1),),
+            )
+
+
+@pytest.mark.parametrize("bad", [True, "1", float("nan"), float("inf")])
+def test_policy_rejects_non_numeric_or_non_finite_thresholds(bad: object) -> None:
+    from arvp.gates import AbsoluteThresholdCriterion, RelativeBaselineCriterion
+
+    with pytest.raises(GateContractError, match="threshold"):
+        AbsoluteThresholdCriterion(
+            "quality",
+            "quality.score",
+            "gte",
+            bad,  # type: ignore[arg-type]
+        )
+    with pytest.raises(GateContractError, match="threshold"):
+        RelativeBaselineCriterion(
+            "quality.relative",
+            "quality.score",
+            "minimum_improvement",
+            bad,  # type: ignore[arg-type]
+        )
+
+
+def test_relative_policy_threshold_must_be_non_negative_fraction() -> None:
+    from arvp.gates import RelativeBaselineCriterion
+
+    with pytest.raises(GateContractError, match="non-negative"):
+        RelativeBaselineCriterion(
+            "quality.relative",
+            "quality.score",
+            "minimum_improvement",
+            Decimal("-0.01"),
+        )
+
+
+def test_policy_rejects_empty_and_duplicate_criteria() -> None:
+    from arvp.gates import AbsoluteThresholdCriterion, GatePolicy
+
+    contract = _contract()
+    with pytest.raises(GateContractError, match="non-empty"):
+        GatePolicy("release.default", contract, ())
+
+    criterion = AbsoluteThresholdCriterion("quality", "quality.score", "gte", 1)
+    with pytest.raises(GateContractError, match="duplicate criterion_id"):
+        GatePolicy("release.default", contract, (criterion, criterion))
+
+
+def test_policy_rejects_unknown_metric_id() -> None:
+    from arvp.gates import AbsoluteThresholdCriterion, GatePolicy
+
+    with pytest.raises(GateContractError, match="unknown metric_id"):
+        GatePolicy(
+            "release.default",
+            _contract(),
+            (AbsoluteThresholdCriterion("missing", "missing.metric", "gte", 1),),
+        )
+
+
+def test_policy_rejects_relative_criterion_for_neutral_metric() -> None:
+    from arvp.gates import GatePolicy, RelativeBaselineCriterion
+
+    with pytest.raises(GateContractError, match="neutral"):
+        GatePolicy(
+            "release.default",
+            _contract(),
+            (
+                RelativeBaselineCriterion(
+                    "bias.relative", "bias", "no_regression_beyond", Decimal("0.1")
+                ),
+            ),
+        )
+
+
+@pytest.mark.parametrize("operator", ["gt", "lt", "eq", 1])
+def test_absolute_criterion_rejects_unknown_operator(operator: object) -> None:
+    from arvp.gates import AbsoluteThresholdCriterion
+
+    with pytest.raises(GateContractError, match="operator"):
+        AbsoluteThresholdCriterion(
+            "quality",
+            "quality.score",
+            operator,
+            1,  # type: ignore[arg-type]
+        )
+
+
+@pytest.mark.parametrize("mode", ["regress", "improve", "raw", 1])
+def test_relative_criterion_rejects_unknown_mode(mode: object) -> None:
+    from arvp.gates import RelativeBaselineCriterion
+
+    with pytest.raises(GateContractError, match="mode"):
+        RelativeBaselineCriterion(
+            "quality.relative",
+            "quality.score",
+            mode,  # type: ignore[arg-type]
+            Decimal("0.1"),
+        )

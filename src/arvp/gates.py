@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
@@ -17,6 +19,7 @@ from arvp.metrics import (
 )
 
 METRIC_COMPARISON_CONTRACT_VERSION = "arvp.metric-comparison.v1"
+GATE_POLICY_CONTRACT_VERSION = "arvp.gate-policy.v1"
 
 ComparisonStatus = Literal["complete", "incomplete", "not_applicable"]
 ComparisonReason = Literal[
@@ -29,6 +32,8 @@ ComparisonReason = Literal[
 ]
 RelativeDeltaReason = Literal["baseline_zero"]
 DirectionResult = Literal["improved", "regressed", "equal"]
+GateOperator = Literal["gte", "lte"]
+RelativeMode = Literal["no_regression_beyond", "minimum_improvement"]
 
 _REASON_ORDER: tuple[ComparisonReason, ...] = (
     "missing_baseline",
@@ -43,6 +48,169 @@ _NUMERIC_STATUSES = frozenset({"measured", "derived"})
 
 class GateContractError(ValueError):
     """Raised when comparison/gate contracts are structurally malformed."""
+
+
+_STABLE_ID_RE = re.compile(r"^[a-z][a-z0-9_.-]{0,63}$")
+_VALID_OPERATORS = frozenset({"gte", "lte"})
+_VALID_RELATIVE_MODES = frozenset({"no_regression_beyond", "minimum_improvement"})
+
+
+def _require_stable_id(value: object, field: str) -> str:
+    if type(value) is not str or _STABLE_ID_RE.fullmatch(value) is None:
+        raise GateContractError(f"{field} must match ^[a-z][a-z0-9_.-]{{0,63}}$")
+    return value
+
+
+def _finite_decimal(value: object, field: str) -> Decimal:
+    if type(value) is int:
+        result = Decimal(value)
+    elif type(value) is float:
+        if not math.isfinite(value):
+            raise GateContractError(f"{field} must be a finite numeric threshold")
+        result = Decimal(str(value))
+    elif type(value) is Decimal:
+        result = value
+    else:
+        raise GateContractError(f"{field} must be a finite numeric threshold")
+    if not result.is_finite():
+        raise GateContractError(f"{field} must be a finite numeric threshold")
+    return result
+
+
+@dataclass(frozen=True, slots=True)
+class AbsoluteThresholdCriterion:
+    criterion_id: str
+    metric_id: str
+    operator: GateOperator
+    threshold: Decimal
+
+    def __post_init__(self) -> None:
+        _require_stable_id(self.criterion_id, "criterion_id")
+        _require_stable_id(self.metric_id, "metric_id")
+        if type(self.operator) is not str or self.operator not in _VALID_OPERATORS:
+            raise GateContractError("operator must be gte or lte")
+        object.__setattr__(
+            self, "threshold", _finite_decimal(self.threshold, "threshold")
+        )
+
+    @property
+    def criterion_type(self) -> str:
+        return "absolute_threshold"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "criterion_id": self.criterion_id,
+            "criterion_type": self.criterion_type,
+            "metric_id": self.metric_id,
+            "operator": self.operator,
+            "threshold": self.threshold,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class RelativeBaselineCriterion:
+    criterion_id: str
+    metric_id: str
+    mode: RelativeMode
+    threshold: Decimal
+
+    def __post_init__(self) -> None:
+        _require_stable_id(self.criterion_id, "criterion_id")
+        _require_stable_id(self.metric_id, "metric_id")
+        if type(self.mode) is not str or self.mode not in _VALID_RELATIVE_MODES:
+            raise GateContractError(
+                "mode must be no_regression_beyond or minimum_improvement"
+            )
+        threshold = _finite_decimal(self.threshold, "threshold")
+        if threshold < 0:
+            raise GateContractError("relative threshold must be non-negative")
+        object.__setattr__(self, "threshold", threshold)
+
+    @property
+    def criterion_type(self) -> str:
+        return "relative_baseline"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "criterion_id": self.criterion_id,
+            "criterion_type": self.criterion_type,
+            "metric_id": self.metric_id,
+            "mode": self.mode,
+            "threshold": self.threshold,
+        }
+
+
+GateCriterion = AbsoluteThresholdCriterion | RelativeBaselineCriterion
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class GatePolicy:
+    policy_id: str
+    metric_contract_fingerprint: str
+    criteria: tuple[GateCriterion, ...]
+    contract_version: str
+
+    def __init__(
+        self,
+        policy_id: str,
+        metric_contract: MetricContract,
+        criteria: Sequence[GateCriterion],
+    ) -> None:
+        _require_stable_id(policy_id, "policy_id")
+        if type(metric_contract) is not MetricContract:
+            raise GateContractError("metric_contract must be a MetricContract")
+        if (
+            isinstance(criteria, (str, bytes))
+            or not isinstance(criteria, Sequence)
+            or not criteria
+        ):
+            raise GateContractError("criteria must be a non-empty sequence")
+        normalized: list[GateCriterion] = []
+        seen: set[str] = set()
+        for criterion in criteria:
+            if type(criterion) not in {
+                AbsoluteThresholdCriterion,
+                RelativeBaselineCriterion,
+            }:
+                raise GateContractError("criteria must contain supported gate criteria")
+            if criterion.criterion_id in seen:
+                raise GateContractError(
+                    f"duplicate criterion_id: {criterion.criterion_id}"
+                )
+            try:
+                definition = metric_contract.definition(criterion.metric_id)
+            except MetricContractError as exc:
+                raise GateContractError(str(exc)) from exc
+            if (
+                type(criterion) is RelativeBaselineCriterion
+                and definition.direction == "neutral"
+            ):
+                raise GateContractError(
+                    "relative criteria are invalid for neutral metrics"
+                )
+            seen.add(criterion.criterion_id)
+            normalized.append(criterion)
+        object.__setattr__(self, "policy_id", policy_id)
+        object.__setattr__(
+            self, "metric_contract_fingerprint", metric_contract.fingerprint()
+        )
+        object.__setattr__(
+            self,
+            "criteria",
+            tuple(sorted(normalized, key=lambda item: item.criterion_id)),
+        )
+        object.__setattr__(self, "contract_version", GATE_POLICY_CONTRACT_VERSION)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "contract_version": self.contract_version,
+            "criteria": [criterion.to_dict() for criterion in self.criteria],
+            "metric_contract_fingerprint": self.metric_contract_fingerprint,
+            "policy_id": self.policy_id,
+        }
+
+    def fingerprint(self) -> str:
+        return canonical_hash(self.to_dict())
 
 
 @dataclass(frozen=True, slots=True, init=False)
