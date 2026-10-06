@@ -10,10 +10,15 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from arvp.canonical import canonical_hash, canonical_json_dumps
+from arvp.canonical import (
+    CanonicalizationError,
+    FingerprintFormatError,
+    canonical_hash,
+    canonical_json_dumps,
+    validate_fingerprint,
+)
 from arvp.datasets import assert_evidence_safe
 
-_FINGERPRINT_RE = re.compile(r"^[a-f0-9]{64}$")
 _RUN_ID_RE = re.compile(r"^run-[a-f0-9]{12}-\d{4}$")
 _VALID_STATUSES = frozenset({"running", "completed", "failed"})
 
@@ -29,9 +34,10 @@ def _require_text(value: object, field: str) -> str:
 
 
 def _require_fingerprint(value: object, field: str) -> str:
-    if not isinstance(value, str) or not _FINGERPRINT_RE.fullmatch(value):
-        raise ProvenanceError(f"{field} must be a 64-character lowercase SHA-256 hash")
-    return value
+    try:
+        return validate_fingerprint(value, field)
+    except FingerprintFormatError as exc:
+        raise ProvenanceError(str(exc)) from exc
 
 
 def _parse_utc(value: object, field: str) -> str:
@@ -67,6 +73,11 @@ class RunProvenance:
             assert_evidence_safe(copied)
         except ValueError as exc:
             raise ProvenanceError(str(exc)) from exc
+        # Canonicalizability check
+        try:
+            canonical_json_dumps(copied)
+        except CanonicalizationError as exc:
+            raise ProvenanceError(f"configuration not canonicalizable: {exc}") from exc
         object.__setattr__(self, "configuration", copied)
 
     def to_dict(self) -> dict[str, Any]:
@@ -139,6 +150,11 @@ class RunRecord:
                 assert_evidence_safe(copied)
             except ValueError as exc:
                 raise ProvenanceError(str(exc)) from exc
+            # Canonicalizability check
+            try:
+                canonical_json_dumps(copied)
+            except CanonicalizationError as exc:
+                raise ProvenanceError(f"result not canonicalizable: {exc}") from exc
             object.__setattr__(self, "result", copied)
 
     def to_dict(self) -> dict[str, Any]:

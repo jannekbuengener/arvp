@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from arvp.canonical import canonical_hash
+from arvp.canonical import (
+    CanonicalizationError,
+    canonical_hash,
+    canonical_json_dumps,
+)
 
 CONTENT_IDENTITY_SCHEMA_VERSION = "arvp.dataset-content.v1"
 _FORBIDDEN_EVIDENCE_KEYS = frozenset(
@@ -67,22 +70,6 @@ def assert_evidence_safe(value: Any) -> None:
         )
 
 
-def _normalize_content_value(value: Any) -> Any:
-    """Normalize Decimal values to the same numeric route as JSON floats."""
-    if isinstance(value, Decimal):
-        if not value.is_finite():
-            return None
-        try:
-            return float(format(value.normalize(), "f"))
-        except (InvalidOperation, ValueError, OverflowError) as exc:
-            raise DatasetIdentityError("decimal field cannot be normalized") from exc
-    if isinstance(value, Mapping):
-        return {str(key): _normalize_content_value(item) for key, item in value.items()}
-    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        return [_normalize_content_value(item) for item in value]
-    return value
-
-
 @dataclass(frozen=True, slots=True)
 class DatasetRequest:
     """A portable description of what data was requested, never where it lived."""
@@ -96,11 +83,28 @@ class DatasetRequest:
         _require_text(self.revision, "revision")
         if not isinstance(self.parameters, Mapping):
             raise DatasetIdentityError("parameters must be a mapping")
-        copied = {
-            str(key): _normalize_content_value(value)
-            for key, value in self.parameters.items()
-        }
+
+        # Validate keys: exact str, not "$arvp"
+        for key in self.parameters.keys():
+            if type(key) is not str:
+                raise DatasetIdentityError("parameter keys must be strings")
+            if key == "$arvp":
+                raise DatasetIdentityError(r"reserved key '\$arvp' not allowed")
+
+        # Copy original portable values
+        copied = dict(self.parameters)
+
+        # Evidence safety
         assert_evidence_safe(copied)
+
+        # Canonicalizability check (fails if any value not portable)
+        try:
+            canonical_json_dumps(copied)
+        except CanonicalizationError as exc:
+            raise DatasetIdentityError(
+                f"parameters not canonicalizable: {exc}"
+            ) from exc
+
         object.__setattr__(self, "parameters", copied)
 
     def to_dict(self) -> dict[str, Any]:
@@ -142,6 +146,11 @@ def identify_content(
     Callers choose the portable semantic fields. This prevents an accidental
     path, credential, provider-specific metadata, or unrelated field from
     entering the identity. ``order_by`` makes record order provider-neutral.
+
+    The ``order_by`` field uses canonical JSON total order as identity sort key,
+    not numeric/lexical order. This ensures provider-neutral deterministic
+    fingerprints. Example: ``1``, ``2``, ``10`` sort as ``1``, ``10``, ``2``
+    (JSON string order).
     """
     _require_text(schema_version, "schema_version")
     if not records:
@@ -164,22 +173,25 @@ def identify_content(
             raise DatasetIdentityError(
                 f"record {index} is missing selected field(s): {', '.join(missing)}"
             )
-        selected_records.append(
-            {
-                field: _normalize_content_value(record[field])
-                for field in selected_fields
-            }
-        )
+        selected_records.append({field: record[field] for field in selected_fields})
 
-    if order_by is not None:
-        selected_records.sort(
-            key=lambda record: (str(record[order_by]), canonical_hash(record))
-        )
+    try:
+        if order_by is not None:
+            selected_records.sort(
+                key=lambda record: (
+                    canonical_json_dumps(record[order_by]),
+                    canonical_hash(record),
+                )
+            )
 
-    payload = {"records": selected_records, "schema_version": schema_version}
-    assert_evidence_safe(payload)
+        payload = {"records": selected_records, "schema_version": schema_version}
+        assert_evidence_safe(payload)
+        fingerprint = canonical_hash(payload)
+    except CanonicalizationError as exc:
+        raise DatasetIdentityError(f"content not canonicalizable: {exc}") from exc
+
     return DatasetContentIdentity(
         schema_version=schema_version,
         record_count=len(selected_records),
-        fingerprint=canonical_hash(payload),
+        fingerprint=fingerprint,
     )

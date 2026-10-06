@@ -10,7 +10,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from arvp.canonical import canonical_hash, canonical_json_dumps
+from arvp.canonical import (
+    CanonicalizationError,
+    canonical_hash,
+    canonical_json_dumps,
+)
 from arvp.datasets import assert_evidence_safe
 
 _GROUP_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
@@ -46,6 +50,11 @@ class Scenario:
             assert_evidence_safe(parameters)
         except ValueError as exc:
             raise ScenarioError(str(exc)) from exc
+        # Canonicalizability check
+        try:
+            canonical_json_dumps(parameters)
+        except CanonicalizationError as exc:
+            raise ScenarioError(f"parameters not canonicalizable: {exc}") from exc
         object.__setattr__(self, "parameters", parameters)
 
     def to_dict(self) -> dict[str, Any]:
@@ -81,6 +90,11 @@ class ScenarioResult:
                 assert_evidence_safe(metrics)
             except ValueError as exc:
                 raise ScenarioError(str(exc)) from exc
+            # Canonicalizability check
+            try:
+                canonical_json_dumps(metrics)
+            except CanonicalizationError as exc:
+                raise ScenarioError(f"metrics not canonicalizable: {exc}") from exc
             object.__setattr__(self, "metrics", metrics)
 
     @property
@@ -124,7 +138,11 @@ def build_group_id(scenario_ids: Sequence[str]) -> str:
     if not scenario_ids:
         raise ScenarioError("scenario_ids must not be empty")
     normalized = [_require_text(value, "scenario_id") for value in scenario_ids]
-    return f"sg-{canonical_hash({'scenario_ids': normalized})[:12]}"
+    try:
+        fingerprint = canonical_hash({"scenario_ids": normalized})
+    except CanonicalizationError as exc:
+        raise ScenarioError(f"scenario_ids not canonicalizable: {exc}") from exc
+    return f"sg-{fingerprint[:12]}"
 
 
 def run_scenarios(
@@ -172,7 +190,12 @@ def run_scenarios(
         {"exit_code": result.exit_code, "scenario_id": result.scenario_id}
         for result in results
     ]
-    fingerprint = canonical_hash({"group_id": resolved_group_id, "outcomes": outcomes})
+    try:
+        fingerprint = canonical_hash(
+            {"group_id": resolved_group_id, "outcomes": outcomes}
+        )
+    except CanonicalizationError as exc:
+        raise ScenarioError(f"scenario outcomes not canonicalizable: {exc}") from exc
     finished = clock().astimezone(timezone.utc).isoformat()
     return ScenarioManifest(
         group_id=resolved_group_id,
@@ -195,3 +218,5 @@ def write_scenario_manifest(manifest: ScenarioManifest, path: Path | str) -> Non
         )
     except OSError as exc:
         raise ScenarioError(f"could not write scenario manifest: {exc}") from exc
+    except CanonicalizationError as exc:
+        raise ScenarioError(f"manifest not canonicalizable: {exc}") from exc

@@ -8,7 +8,11 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any, Literal
 
-from arvp.canonical import canonical_hash
+from arvp.canonical import (
+    FingerprintFormatError,
+    canonical_hash,
+    validate_fingerprint,
+)
 
 
 class EvaluationError(ValueError):
@@ -295,11 +299,10 @@ class CandidateScore:
     def __post_init__(self) -> None:
         _require_text(self.candidate_id, "candidate_id")
         object.__setattr__(self, "score", _decimal(self.score, "score"))
-        if (
-            not isinstance(self.evidence_fingerprint, str)
-            or len(self.evidence_fingerprint) != 64
-        ):
-            raise EvaluationError("evidence_fingerprint must be a SHA-256 hash")
+        try:
+            validate_fingerprint(self.evidence_fingerprint, "evidence_fingerprint")
+        except FingerprintFormatError as exc:
+            raise EvaluationError(str(exc)) from exc
 
 
 def rank_candidates(candidates: Sequence[CandidateScore]) -> tuple[CandidateScore, ...]:

@@ -48,3 +48,14 @@ def test_scenario_harness_rejects_wrong_runner_contract() -> None:
 def test_scenario_rejects_sensitive_parameters() -> None:
     with pytest.raises(ScenarioError, match="forbidden"):
         Scenario("one", "Only", {"token": "secret"})
+
+
+def test_run_scenarios_wraps_group_id_canonicalization_error() -> None:
+    scenario = Scenario("\ud800", "Only", {})
+
+    with pytest.raises(ScenarioError, match="canonical"):
+        run_scenarios(
+            [scenario],
+            runner=lambda item: ScenarioResult(item.scenario_id, 0, metrics={}),
+            clock=_fixed_clock,
+        )
