@@ -866,11 +866,13 @@ def evaluate_gate(
     results: list[CriterionResult] = []
     for criterion in policy.criteria:
         definition = metric_contract.definition(criterion.metric_id)
-        comparison = by_metric.get(criterion.metric_id)
+        matched = by_metric.get(criterion.metric_id)
         if type(criterion) is AbsoluteThresholdCriterion:
-            result = _absolute_result(criterion, definition.required, comparison)
+            result = _absolute_result(criterion, definition.required, matched)
+        elif type(criterion) is RelativeBaselineCriterion:
+            result = _relative_result(criterion, definition.required, matched)
         else:
-            result = _relative_result(criterion, definition.required, comparison)
+            raise GateContractError("unsupported criterion type")
         results.append(result)
 
     normalized = tuple(sorted(results, key=lambda item: item.criterion.criterion_id))
