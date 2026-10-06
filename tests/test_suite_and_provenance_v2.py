@@ -193,17 +193,55 @@ def test_prefix_collision_does_not_mix_attempts(tmp_path) -> None:
         code_revision="rev-a",
         arvp_version="0.1.0",
     )
-    # Same display prefix, different provenance fingerprint, high attempt number.
     prefix = real.fingerprint()[:12]
+    foreign_fp = prefix + ("f" if real.fingerprint()[12] != "f" else "e") * 52
+    assert foreign_fp != real.fingerprint()
     foreign = RunRecord(
         run_id=f"run-{prefix}-0099",
-        provenance_fingerprint="c" * 64,
+        provenance_fingerprint=foreign_fp,
         status="running",
         started_at_utc="2026-10-05T12:00:00Z",
     )
     registry = JsonlRunRegistry(tmp_path / "registry.jsonl")
     registry.append(foreign)
     assert registry.next_attempt(real) == 1
+
+
+def test_run_record_requires_prefix_coherence_and_nonzero_attempt() -> None:
+    with pytest.raises(ProvenanceError, match="prefix must match"):
+        RunRecord(
+            run_id="run-aaaaaaaaaaaa-0001",
+            provenance_fingerprint="b" * 64,
+            status="running",
+            started_at_utc="2026-10-05T12:00:00Z",
+        )
+    with pytest.raises(ProvenanceError, match="positive integer"):
+        RunRecord(
+            run_id="run-" + ("a" * 12) + "-0000",
+            provenance_fingerprint="a" * 64,
+            status="running",
+            started_at_utc="2026-10-05T12:00:00Z",
+        )
+
+
+def test_load_all_revalidates_lifecycle_history(tmp_path) -> None:
+    path = tmp_path / "registry.jsonl"
+    fp = "a" * 64
+    # Terminal-first history must fail closed on load.
+    payload = {
+        "run_id": "run-" + ("a" * 12) + "-0001",
+        "provenance_fingerprint": fp,
+        "schema_version": RUN_RECORD_SCHEMA_VERSION,
+        "started_at_utc": "2026-10-05T12:00:00Z",
+        "finished_at_utc": "2026-10-05T12:00:01Z",
+        "status": "completed",
+    }
+    path.write_text(
+        __import__("json").dumps(payload, separators=(",", ":")) + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ProvenanceError, match="must have status running"):
+        JsonlRunRegistry(path).load_all()
 
 
 def test_canonical_utc_normalizes_equivalent_forms() -> None:
@@ -301,7 +339,7 @@ def test_first_record_must_be_running(tmp_path) -> None:
     with pytest.raises(ProvenanceError, match="must have status running"):
         registry.append(
             RunRecord(
-                run_id="run-0123456789ab-0001",
+                run_id="run-" + ("a" * 12) + "-0001",
                 provenance_fingerprint="a" * 64,
                 status="completed",
                 started_at_utc="2026-10-05T12:00:00Z",

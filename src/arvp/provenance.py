@@ -233,6 +233,12 @@ class RunRecord:
             "provenance_fingerprint",
             _require_fingerprint(self.provenance_fingerprint, "provenance_fingerprint"),
         )
+        prefix, attempt_text = self.run_id.removeprefix("run-").rsplit("-", 1)
+        if prefix != self.provenance_fingerprint[:12]:
+            raise ProvenanceError(
+                "run_id prefix must match provenance_fingerprint[:12]"
+            )
+        _require_attempt(int(attempt_text))
         if self.schema_version != RUN_RECORD_SCHEMA_VERSION:
             raise ProvenanceError(
                 f"schema_version must be {RUN_RECORD_SCHEMA_VERSION!r}"
@@ -409,7 +415,9 @@ class JsonlRunRegistry:
             if not isinstance(payload, Mapping):
                 raise ProvenanceError(f"registry line {number} must be an object")
             try:
-                records.append(RunRecord.from_dict(payload))
+                record = RunRecord.from_dict(payload)
+                _validate_lifecycle_append(records, record)
+                records.append(record)
             except ProvenanceError as exc:
                 raise ProvenanceError(f"invalid registry line {number}: {exc}") from exc
         return records

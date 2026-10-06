@@ -54,7 +54,7 @@ def test_dataset_identity_rejects_path_and_missing_selected_field() -> None:
 def test_run_record_fails_closed_for_invalid_lifecycle() -> None:
     with pytest.raises(ProvenanceError, match="failed records require"):
         RunRecord(
-            run_id="run-0123456789ab-0001",
+            run_id="run-" + ("b" * 12) + "-0001",
             provenance_fingerprint="b" * 64,
             status="failed",
             started_at_utc="2026-10-05T12:00:00Z",
