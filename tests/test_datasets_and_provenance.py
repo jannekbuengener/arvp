@@ -10,8 +10,8 @@ from arvp.provenance import JsonlRunRegistry, ProvenanceError, RunProvenance, Ru
 
 def test_content_identity_is_provider_neutral_when_selected_fields_match() -> None:
     file_records = [
-        {"ts": 2, "score": 1.5, "path": "not selected"},
-        {"ts": 1, "score": 1.0, "provider": "file"},
+        {"ts": 2, "score": Decimal("1.5"), "path": "not selected"},
+        {"ts": 1, "score": Decimal("1.0"), "provider": "file"},
     ]
     db_records = [
         {"ts": 1, "score": Decimal("1.0"), "connection": "not selected"},
@@ -72,4 +72,13 @@ def test_run_record_fails_closed_for_invalid_lifecycle() -> None:
             status="failed",
             started_at_utc="2026-10-05T12:00:00+00:00",
             finished_at_utc="2026-10-05T12:00:01+00:00",
+        )
+
+
+def test_identify_content_wraps_canonicalization_errors() -> None:
+    with pytest.raises(DatasetIdentityError, match="canonical"):
+        identify_content(
+            [{"id": {"nested": {1: "x"}}}],
+            fields=("id",),
+            order_by="id",
         )

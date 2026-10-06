@@ -1,0 +1,412 @@
+{
+  "contract_version": "arvp.canonical.v2",
+  "vectors": [
+    {
+      "name": "empty_object",
+      "source": {
+        "kind": "json",
+        "text": "{}"
+      },
+      "expected_json": "{}",
+      "expected_fingerprint": "2330dbca3919720824abbacbad03f32987a1a430bd53132188c9c4ed144fd292"
+    },
+    {
+      "name": "explicit_null",
+      "source": {
+        "kind": "json",
+        "text": "{\"x\": null}"
+      },
+      "expected_json": "{\"x\":null}",
+      "expected_fingerprint": "0ea72e21eb20c951c4f2c026f2378dcc5c6c6bdfedb8ce9750fc9a4e51a2c6f1"
+    },
+    {
+      "name": "bool_true",
+      "source": {
+        "kind": "json",
+        "text": "true"
+      },
+      "expected_json": "true",
+      "expected_fingerprint": "ae2d2e4fa58992cd3905934289364e1739c2bfe7bda686c28c4ba7803736046b"
+    },
+    {
+      "name": "bool_false",
+      "source": {
+        "kind": "json",
+        "text": "false"
+      },
+      "expected_json": "false",
+      "expected_fingerprint": "bc0b259e0c2504f2e034c2445c5eeab346dd8415a053c3eb56267d0e41cabf1a"
+    },
+    {
+      "name": "int_positive",
+      "source": {
+        "kind": "json",
+        "text": "42"
+      },
+      "expected_json": "42",
+      "expected_fingerprint": "58a2ba104b92c24df1d20f5159674a95122e6a104b48daf08fc82b0b62dfe6d9"
+    },
+    {
+      "name": "int_negative",
+      "source": {
+        "kind": "json",
+        "text": "-5"
+      },
+      "expected_json": "-5",
+      "expected_fingerprint": "9810e036b6dc9acafe62d8b52537b1297584b0c740d38f61432d80995215210c"
+    },
+    {
+      "name": "float_01",
+      "source": {
+        "kind": "json",
+        "text": "0.1"
+      },
+      "expected_json": "0.1",
+      "expected_fingerprint": "2ab5e07cb34f66d61d601a0d3a4d03ed4efb487ee7cd1991b1985e63ae3db70e"
+    },
+    {
+      "name": "float_precision_collision_1",
+      "source": {
+        "kind": "json",
+        "text": "0.12345678901"
+      },
+      "expected_json": "0.12345678901",
+      "expected_fingerprint": "a14b9219ba4de086920c141dace1fb48b04e3e1844a5b49036000f00d325a91b"
+    },
+    {
+      "name": "float_precision_collision_2",
+      "source": {
+        "kind": "json",
+        "text": "0.12345678902"
+      },
+      "expected_json": "0.12345678902",
+      "expected_fingerprint": "4d45043717d5bd983088bbb75a7bc2d31a3adcf44c12f7347a5a13834f4cbd79"
+    },
+    {
+      "name": "float_pos_zero",
+      "source": {
+        "kind": "float_pos_zero"
+      },
+      "expected_json": "0.0",
+      "expected_fingerprint": "4be03be9f419f75b3c0221ed03d5f5a4a40faf277eff20b86eb544fa78660275"
+    },
+    {
+      "name": "float_neg_zero",
+      "source": {
+        "kind": "float_neg_zero"
+      },
+      "expected_json": "0.0",
+      "expected_fingerprint": "4be03be9f419f75b3c0221ed03d5f5a4a40faf277eff20b86eb544fa78660275"
+    },
+    {
+      "name": "float_nan",
+      "source": {
+        "kind": "float_nan"
+      },
+      "expect_error": "CanonicalizationError"
+    },
+    {
+      "name": "float_pos_inf",
+      "source": {
+        "kind": "float_pos_inf"
+      },
+      "expect_error": "CanonicalizationError"
+    },
+    {
+      "name": "float_neg_inf",
+      "source": {
+        "kind": "float_neg_inf"
+      },
+      "expect_error": "CanonicalizationError"
+    },
+    {
+      "name": "decimal_1",
+      "source": {
+        "kind": "decimal",
+        "text": "1"
+      },
+      "expected_json": "{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":0,\"type\":\"decimal\"}}",
+      "expected_fingerprint": "5d210875b5dfa4f3e6403a67bd7292c17df583ad4049e8b355651fe9548469df"
+    },
+    {
+      "name": "decimal_1_0",
+      "source": {
+        "kind": "decimal",
+        "text": "1.0"
+      },
+      "expected_json": "{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":0,\"type\":\"decimal\"}}",
+      "expected_fingerprint": "5d210875b5dfa4f3e6403a67bd7292c17df583ad4049e8b355651fe9548469df"
+    },
+    {
+      "name": "decimal_1_00",
+      "source": {
+        "kind": "decimal",
+        "text": "1.00"
+      },
+      "expected_json": "{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":0,\"type\":\"decimal\"}}",
+      "expected_fingerprint": "5d210875b5dfa4f3e6403a67bd7292c17df583ad4049e8b355651fe9548469df"
+    },
+    {
+      "name": "decimal_1e0",
+      "source": {
+        "kind": "decimal",
+        "text": "1E+0"
+      },
+      "expected_json": "{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":0,\"type\":\"decimal\"}}",
+      "expected_fingerprint": "5d210875b5dfa4f3e6403a67bd7292c17df583ad4049e8b355651fe9548469df"
+    },
+    {
+      "name": "decimal_0_10",
+      "source": {
+        "kind": "decimal",
+        "text": "0.10"
+      },
+      "expected_json": "{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":-1,\"type\":\"decimal\"}}",
+      "expected_fingerprint": "6911e70d21b2f4d4243991717ae0cdef90345a5969f29c1ec9a9e4ea21d9c61c"
+    },
+    {
+      "name": "decimal_0_100",
+      "source": {
+        "kind": "decimal",
+        "text": "0.100"
+      },
+      "expected_json": "{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":-1,\"type\":\"decimal\"}}",
+      "expected_fingerprint": "6911e70d21b2f4d4243991717ae0cdef90345a5969f29c1ec9a9e4ea21d9c61c"
+    },
+    {
+      "name": "decimal_zero",
+      "source": {
+        "kind": "decimal",
+        "text": "0"
+      },
+      "expected_json": "{\"$arvp\":{\"coefficient\":\"0\",\"exponent\":0,\"type\":\"decimal\"}}",
+      "expected_fingerprint": "4ce31760d62387650e14834cf0c4c16a9f2f542257fd84b56ed68079893ce502"
+    },
+    {
+      "name": "decimal_neg_zero",
+      "source": {
+        "kind": "decimal",
+        "text": "-0"
+      },
+      "expected_json": "{\"$arvp\":{\"coefficient\":\"0\",\"exponent\":0,\"type\":\"decimal\"}}",
+      "expected_fingerprint": "4ce31760d62387650e14834cf0c4c16a9f2f542257fd84b56ed68079893ce502"
+    },
+    {
+      "name": "decimal_negative",
+      "source": {
+        "kind": "decimal",
+        "text": "-123.4500"
+      },
+      "expected_json": "{\"$arvp\":{\"coefficient\":\"-12345\",\"exponent\":-2,\"type\":\"decimal\"}}",
+      "expected_fingerprint": "3645394a7c45f54fe29c03c19d33c51cf1021b7b2b4209c38474508c2a5f8139"
+    },
+    {
+      "name": "decimal_huge_exp_pos",
+      "source": {
+        "kind": "decimal",
+        "text": "1E+100"
+      },
+      "expected_json": "{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":100,\"type\":\"decimal\"}}",
+      "expected_fingerprint": "739b79bf3291e53dd0ab7f2013c27dbcbb3b940d39ddd379dba8f61b898e573c"
+    },
+    {
+      "name": "decimal_huge_exp_neg",
+      "source": {
+        "kind": "decimal",
+        "text": "1E-100"
+      },
+      "expected_json": "{\"$arvp\":{\"coefficient\":\"1\",\"exponent\":-100,\"type\":\"decimal\"}}",
+      "expected_fingerprint": "b03b61d73101d5c908f189916fef0c2179814d9e7966f549f3cae480a7368142"
+    },
+    {
+      "name": "decimal_nan",
+      "source": {
+        "kind": "decimal_nan"
+      },
+      "expect_error": "CanonicalizationError"
+    },
+    {
+      "name": "decimal_pos_inf",
+      "source": {
+        "kind": "decimal_pos_inf"
+      },
+      "expect_error": "CanonicalizationError"
+    },
+    {
+      "name": "decimal_neg_inf",
+      "source": {
+        "kind": "decimal_neg_inf"
+      },
+      "expect_error": "CanonicalizationError"
+    },
+    {
+      "name": "list_basic",
+      "source": {
+        "kind": "json",
+        "text": "[1,2,3]"
+      },
+      "expected_json": "[1,2,3]",
+      "expected_fingerprint": "57b3556c589877dd3d32881e2058661067ef3740f26ed3f6ee4826f344d2d288"
+    },
+    {
+      "name": "tuple_as_list",
+      "source": {
+        "kind": "tuple",
+        "items": [
+          1,
+          2
+        ]
+      },
+      "expected_json": "[1,2]",
+      "expected_fingerprint": "062d4019c20ff224275bf0a82c4ebfc3617e4d7e7a5dc485c717b3374aed0932"
+    },
+    {
+      "name": "nested_mapping",
+      "source": {
+        "kind": "json",
+        "text": "{\"a\":{\"b\":[1,2]},\"c\":3}"
+      },
+      "expected_json": "{\"a\":{\"b\":[1,2]},\"c\":3}",
+      "expected_fingerprint": "d52a80762879d26dd9626d86ea49d960bf11aa57d6faa9c00a2a2c390849cd06"
+    },
+    {
+      "name": "mapping_order_independence",
+      "source": {
+        "kind": "json",
+        "text": "{\"b\":2,\"a\":1}"
+      },
+      "expected_json": "{\"a\":1,\"b\":2}",
+      "expected_fingerprint": "691d0190a207a0c9be6ec1480e9eb95495f2d75517d31889b848eaa12265254f"
+    },
+    {
+      "name": "explicit_null_vs_missing",
+      "source": {
+        "kind": "json",
+        "text": "{\"x\":null}"
+      },
+      "expected_json": "{\"x\":null}",
+      "expected_fingerprint": "0ea72e21eb20c951c4f2c026f2378dcc5c6c6bdfedb8ce9750fc9a4e51a2c6f1"
+    },
+    {
+      "name": "reserved_namespace_toplevel",
+      "source": {
+        "kind": "json",
+        "text": "{\"$arvp\":\"user\"}"
+      },
+      "expect_error": "CanonicalizationError"
+    },
+    {
+      "name": "reserved_namespace_nested",
+      "source": {
+        "kind": "json",
+        "text": "{\"nested\":{\"$arvp\":{}}}"
+      },
+      "expect_error": "CanonicalizationError"
+    },
+    {
+      "name": "non_string_key",
+      "source": {
+        "kind": "non_string_key"
+      },
+      "expect_error": "CanonicalizationError"
+    },
+    {
+      "name": "int_enum",
+      "source": {
+        "kind": "int_enum"
+      },
+      "expect_error": "CanonicalizationError"
+    },
+    {
+      "name": "dict_subclass",
+      "source": {
+        "kind": "dict_subclass"
+      },
+      "expect_error": "CanonicalizationError"
+    },
+    {
+      "name": "list_subclass",
+      "source": {
+        "kind": "list_subclass"
+      },
+      "expect_error": "CanonicalizationError"
+    },
+    {
+      "name": "unsupported_set",
+      "source": {
+        "kind": "unsupported_set"
+      },
+      "expect_error": "CanonicalizationError"
+    },
+    {
+      "name": "unicode_nfc",
+      "source": {
+        "kind": "json",
+        "text": "\"\\u00e9\""
+      },
+      "expected_json": "\"é\"",
+      "expected_fingerprint": "e2510548f31b2a7fa91562f5d38318cbf950384f09ca0c97d0c2c5b3f7647d84"
+    },
+    {
+      "name": "unicode_nfd",
+      "source": {
+        "kind": "json",
+        "text": "\"e\\u0301\""
+      },
+      "expected_json": "\"é\"",
+      "expected_fingerprint": "ce3ad8ba892a25fe6f2af4df7a3f1743c1261a369a4e31c1491270bfea8df919"
+    },
+    {
+      "name": "unicode_emoji",
+      "source": {
+        "kind": "json",
+        "text": "\"\\ud83d\\ude00\""
+      },
+      "expected_json": "\"😀\"",
+      "expected_fingerprint": "896a8885caa38d97dcd44d8faad3732fb293fa3336912c26e788d7c4fd899fbd"
+    },
+    {
+      "name": "lone_high_surrogate",
+      "source": {
+        "kind": "lone_high_surrogate"
+      },
+      "expect_error": "CanonicalizationError"
+    },
+    {
+      "name": "lone_low_surrogate",
+      "source": {
+        "kind": "lone_low_surrogate"
+      },
+      "expect_error": "CanonicalizationError"
+    },
+    {
+      "name": "surrogate_in_mapping_key",
+      "source": {
+        "kind": "surrogate_in_mapping_key"
+      },
+      "expect_error": "CanonicalizationError"
+    },
+    {
+      "name": "cycle_list",
+      "source": {
+        "kind": "cycle_list"
+      },
+      "expect_error": "CanonicalizationError"
+    },
+    {
+      "name": "cycle_dict",
+      "source": {
+        "kind": "cycle_dict"
+      },
+      "expect_error": "CanonicalizationError"
+    },
+    {
+      "name": "shared_acyclic_reference",
+      "source": {
+        "kind": "shared_acyclic_reference"
+      },
+      "expected_json": "[{\"x\":1},{\"x\":1}]",
+      "expected_fingerprint": "c87a4368b7d1e6d4b7b41b32a4b1202902ea9c31dc370bffb5af597a4af1b24b"
+    }
+  ]
+}

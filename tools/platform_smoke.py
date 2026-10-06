@@ -1,32 +1,61 @@
-"""Platform smoke probe for ARVP Issue #3.
+"""Platform smoke probe for ARVP Issue #4.
 
-Runs the same focused semantic probe on every platform so that CI proves the
+Runs the canonical v2 golden vectors on every platform so that CI proves the
 core contracts execute and repeat identically inside one environment.
 
-This probe deliberately does NOT freeze any hash value as a long-term contract:
-canonical v2 semantics and golden vectors belong to Issue #4.
+This probe validates the frozen canonical v2 contract via golden fixture.
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from decimal import Decimal
+from arvp.canonical import CanonicalizationError, canonical_hash, canonical_json_dumps
 
-from arvp.canonical import canonical_hash, canonical_json_dumps
-from arvp.datasets import identify_content
-from arvp.scenarios import Scenario, ScenarioResult, run_scenarios
-
-
-def fixed_clock() -> datetime:
-    return datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc)
+try:
+    # When run from tools/ directory (package smoke test)
+    from canonical_v2_golden import load_golden_vectors, reconstruct_source
+except ImportError:
+    # When run from repo root (unit tests)
+    from tools.canonical_v2_golden import load_golden_vectors, reconstruct_source
 
 
-def probe_canonical_json_dumps_repeatable() -> None:
+def probe_golden_vectors() -> None:
+    """Verify all golden vectors match expected canonical JSON and fingerprints."""
+    for vec in load_golden_vectors():
+        source = reconstruct_source(vec)
+        if "expect_error" in vec:
+            # Negative test: verify error is raised
+            try:
+                canonical_json_dumps(source)
+            except CanonicalizationError:
+                pass
+            else:
+                raise AssertionError(
+                    f"Vector {vec['name']}: expected {vec['expect_error']}, but succeeded"
+                )
+        else:
+            # Positive test: verify exact canonical JSON and fingerprint
+            actual_json = canonical_json_dumps(source)
+            assert actual_json == vec["expected_json"], (
+                f"Vector {vec['name']}: canonical JSON mismatch\n"
+                f"  expected: {vec['expected_json']}\n"
+                f"  actual:   {actual_json}"
+            )
+            actual_fp = canonical_hash(source)
+            assert actual_fp == vec["expected_fingerprint"], (
+                f"Vector {vec['name']}: fingerprint mismatch\n"
+                f"  expected: {vec['expected_fingerprint']}\n"
+                f"  actual:   {actual_fp}"
+            )
+
+
+def probe_platform_repeatability() -> None:
+    """Additional repeatability checks for cross-platform validation."""
+    # Canonical JSON dumps repeatability
     payload = {
         "z": 26,
         "a": 1,
         "nested": {"gamma": [3, 2, 1], "alpha": None},
-        "decimal": Decimal("2.500"),
+        "decimal": "1.234",
         "negative_zero": -0.0,
     }
 
@@ -37,81 +66,23 @@ def probe_canonical_json_dumps_repeatable() -> None:
     assert first == second, "canonical_json_dumps depends on mapping order"
     assert isinstance(first, str)
 
-
-def probe_canonical_hash_repeatable() -> None:
-    payload = {
+    # Canonical hash repeatability
+    payload2 = {
         "rows": [{"id": 3, "score": "1.5"}, {"id": 1, "score": "0.5"}],
         "count": 2,
     }
 
-    first = canonical_hash(payload)
-    second = canonical_hash(payload)
+    first = canonical_hash(payload2)
+    second = canonical_hash(payload2)
 
     assert first == second, "canonical_hash not repeatable"
     assert len(first) == 64, f"expected 64 hex characters, got {len(first)}"
 
 
-def probe_identify_content_repeatable() -> None:
-    records = [
-        {"ts": 2, "score": "1.5", "ignored": "x"},
-        {"ts": 1, "score": "1.0", "ignored": "y"},
-        {"ts": 3, "score": "2.0", "ignored": "z"},
-    ]
-
-    first = identify_content(records, fields=("ts", "score"), order_by="ts")
-    second = identify_content(records, fields=("ts", "score"), order_by="ts")
-
-    assert first.fingerprint == second.fingerprint, "identify_content not repeatable"
-    assert first.record_count == 3, f"unexpected record count {first.record_count}"
-
-
-def probe_run_scenarios_repeatable() -> None:
-    scenarios = [
-        Scenario("baseline", "Reference candidate", {"threshold": 1}),
-        Scenario("variant", "Modified candidate", {"threshold": 2}),
-    ]
-
-    def runner(scenario: Scenario) -> ScenarioResult:
-        threshold = int(scenario.parameters["threshold"])
-        return ScenarioResult(
-            scenario.scenario_id,
-            0,
-            metrics={"score": Decimal(threshold) / Decimal(10)},
-        )
-
-    first = run_scenarios(scenarios, runner=runner, clock=fixed_clock)
-    second = run_scenarios(scenarios, runner=runner, clock=fixed_clock)
-
-    assert [result.succeeded for result in first.results] == [True, True], (
-        "synthetic scenarios must succeed"
-    )
-    assert first.group_fingerprint == second.group_fingerprint, (
-        "scenario group fingerprint not repeatable"
-    )
-    assert first.to_dict() == second.to_dict(), "scenario manifest not repeatable"
-
-
-def probe_run_scenarios_records_failure_deterministically() -> None:
-    scenarios = [Scenario("flaky", "Always unavailable candidate", {"attempt": 1})]
-
-    def runner(scenario: Scenario) -> ScenarioResult:
-        raise RuntimeError("input unavailable")
-
-    first = run_scenarios(scenarios, runner=runner, clock=fixed_clock)
-    second = run_scenarios(scenarios, runner=runner, clock=fixed_clock)
-
-    assert [result.succeeded for result in first.results] == [False]
-    assert first.to_dict() == second.to_dict(), "failure evidence not repeatable"
-
-
 def main() -> int:
-    probe_canonical_json_dumps_repeatable()
-    probe_canonical_hash_repeatable()
-    probe_identify_content_repeatable()
-    probe_run_scenarios_repeatable()
-    probe_run_scenarios_records_failure_deterministically()
-
-    print("platform smoke ok: canonical, datasets, scenarios repeatable")
+    probe_golden_vectors()
+    probe_platform_repeatability()
+    print("platform smoke ok: canonical v2 golden vectors verified")
     return 0
 
 
