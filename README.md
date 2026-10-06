@@ -26,6 +26,7 @@ The package currently exposes focused modules:
 - `arvp.identities` — domain-neutral candidate and evaluation-partition identities
 - `arvp.metrics` / `arvp.gates` — typed metrics, baseline comparison, PASS/FAIL/HOLD
 - `arvp.suite` — versioned `EvaluationSuite` binding content, partitions, metrics, gates
+- `arvp.stability` — explicit mean/sum aggregation and paired deterministic resampling
 - `arvp.provenance` — RunProvenance v2 and single-writer JSONL registry integrity
 - `arvp.scenarios` — explicit, fail-closed scenario orchestration
 - `arvp.evaluation` — legacy window execution plus resampling, comparison, and gate helpers
@@ -43,5 +44,6 @@ For extraction lineage, scope boundaries, and deferred work, see
 [`docs/GENERALIZATION_ROADMAP.md`](docs/GENERALIZATION_ROADMAP.md),
 [`docs/identity-contracts-v1.md`](docs/identity-contracts-v1.md),
 [`docs/metric-contracts-v1.md`](docs/metric-contracts-v1.md),
-[`docs/gate-contracts-v1.md`](docs/gate-contracts-v1.md), and
-[`docs/provenance-contracts-v2.md`](docs/provenance-contracts-v2.md).
+[`docs/gate-contracts-v1.md`](docs/gate-contracts-v1.md),
+[`docs/provenance-contracts-v2.md`](docs/provenance-contracts-v2.md), and
+[`docs/stability-contracts-v1.md`](docs/stability-contracts-v1.md).
