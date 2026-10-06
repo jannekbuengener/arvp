@@ -2,10 +2,23 @@
 
 from __future__ import annotations
 
+import math
 import random
 from collections.abc import Sequence
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import (
+    MAX_EMAX,
+    MAX_PREC,
+    MIN_EMIN,
+    ROUND_HALF_EVEN,
+    Context,
+    Decimal,
+    DivisionByZero,
+    InvalidOperation,
+    Overflow,
+    Underflow,
+    localcontext,
+)
 from typing import Any, Literal
 
 from arvp.canonical import canonical_hash
@@ -23,6 +36,57 @@ Aggregation = Literal["mean", "sum"]
 StabilityStatus = Literal["complete", "incomplete"]
 _VALID_AGGREGATIONS = frozenset({"mean", "sum"})
 _NUMERIC_STATUSES = frozenset({"measured", "derived"})
+_ARITHMETIC_PRECISION = 50
+_EXACT_RELATION_SLACK = 2
+
+
+def _nonzero_span(value: Decimal) -> tuple[int, int] | None:
+    if value.is_zero():
+        return None
+    _, _, exponent = value.as_tuple()
+    assert isinstance(exponent, int), "exponent must be int for finite Decimal"
+    return value.adjusted(), exponent
+
+
+def _carry_digits(term_count: int) -> int:
+    """Extra digits for same-sign accumulation of ``term_count`` values."""
+    if term_count <= 1:
+        return 0
+    return math.ceil(math.log10(term_count)) + 1
+
+
+def _precision_for_values(*groups: Sequence[Decimal], term_count: int) -> int:
+    """Precision covering MSD→LSD span plus carry growth (+ slack)."""
+    spans = [
+        span
+        for group in groups
+        for value in group
+        for span in (_nonzero_span(value),)
+        if span is not None
+    ]
+    if not spans:
+        return _ARITHMETIC_PRECISION
+    needed = (
+        max(adjusted for adjusted, _ in spans)
+        - min(exponent for _, exponent in spans)
+        + 1
+        + _EXACT_RELATION_SLACK
+        + _carry_digits(term_count)
+    )
+    if needed > MAX_PREC:
+        raise StabilityError("stability arithmetic exceeds the supported decimal range")
+    return max(_ARITHMETIC_PRECISION, needed)
+
+
+def _pinned_context(*, prec: int = _ARITHMETIC_PRECISION) -> Context:
+    """Fixed deterministic context; never inherits decimal.DefaultContext."""
+    return Context(
+        prec=prec,
+        rounding=ROUND_HALF_EVEN,
+        Emax=MAX_EMAX,
+        Emin=MIN_EMIN,
+        traps=[InvalidOperation, DivisionByZero, Overflow, Underflow],
+    )
 
 
 class StabilityError(ValueError):
@@ -110,13 +174,21 @@ class PairedStabilityResult:
         return canonical_hash(self.to_dict())
 
 
-def _aggregate(values: Sequence[Decimal], aggregation: Aggregation) -> Decimal:
+def _aggregate(
+    values: Sequence[Decimal], aggregation: Aggregation, *, prec: int
+) -> Decimal:
     if not values:
         raise StabilityError("cannot aggregate empty values")
-    total = sum(values, Decimal("0"))
-    if aggregation == "sum":
-        return total
-    return total / Decimal(len(values))
+    try:
+        with localcontext(_pinned_context(prec=prec)):
+            total = sum(values, Decimal("0"))
+            if aggregation == "sum":
+                return total
+            return total / Decimal(len(values))
+    except (InvalidOperation, DivisionByZero, Overflow, Underflow) as exc:
+        raise StabilityError(
+            "stability arithmetic exceeds the supported decimal range"
+        ) from exc
 
 
 def _quantile(ordered: Sequence[Decimal], percentile: int) -> Decimal:
@@ -148,12 +220,13 @@ def _index_side(
     metric_id: str,
     metric_contract: MetricContract,
     side: str,
-) -> dict[str, Observation]:
+) -> tuple[dict[str, Observation], str | None]:
     if isinstance(observations, (str, bytes)) or not isinstance(observations, Sequence):
         raise StabilityError(f"{side} must be a sequence of Observation")
     expected_fp = metric_contract.fingerprint()
     indexed: dict[str, Observation] = {}
     partition_fp: str | None = None
+    candidate_fp: str | None = None
     for observation in observations:
         if type(observation) is not Observation:
             raise StabilityError(f"{side} must contain Observation instances")
@@ -167,12 +240,18 @@ def _index_side(
             partition_fp = observation.partition_fingerprint
         elif observation.partition_fingerprint != partition_fp:
             raise StabilityError(f"{side} observations must share one partition")
+        if candidate_fp is None:
+            candidate_fp = observation.candidate_fingerprint
+        elif observation.candidate_fingerprint != candidate_fp:
+            raise StabilityError(
+                f"{side} observations must share one candidate identity"
+            )
         if observation.observation_id in indexed:
             raise StabilityError(
                 f"duplicate {side} observation_id: {observation.observation_id}"
             )
         indexed[observation.observation_id] = observation
-    return indexed
+    return indexed, partition_fp
 
 
 def _favors_candidate(delta: Decimal, direction: MetricDirection) -> bool | None:
@@ -181,6 +260,52 @@ def _favors_candidate(delta: Decimal, direction: MetricDirection) -> bool | None
     if direction == "minimize":
         return delta < 0
     return None
+
+
+def _request_fingerprint(
+    *,
+    baseline_index: dict[str, Observation],
+    candidate_index: dict[str, Observation],
+    config: StabilityConfig,
+    metric_contract: MetricContract,
+    metric_id: str,
+) -> str:
+    return canonical_hash(
+        {
+            "baseline": [baseline_index[i].to_dict() for i in sorted(baseline_index)],
+            "candidate": [
+                candidate_index[i].to_dict() for i in sorted(candidate_index)
+            ],
+            "config": config.to_dict(),
+            "metric_contract_fingerprint": metric_contract.fingerprint(),
+            "metric_id": metric_id,
+        }
+    )
+
+
+def _incomplete(
+    *,
+    request_fingerprint: str,
+    metric_id: str,
+    direction: MetricDirection,
+    config: StabilityConfig,
+    reasons: tuple[str, ...],
+) -> PairedStabilityResult:
+    return PairedStabilityResult(
+        request_fingerprint=request_fingerprint,
+        metric_id=metric_id,
+        direction=direction,
+        aggregation=config.aggregation,
+        status="incomplete",
+        pair_count=0,
+        sample_count=config.sample_count,
+        observed_delta=None,
+        p05=None,
+        p50=None,
+        p95=None,
+        favors_candidate=None,
+        reasons=reasons,
+    )
 
 
 def paired_resample_stability(
@@ -205,64 +330,65 @@ def paired_resample_stability(
     except MetricContractError as exc:
         raise StabilityError(str(exc)) from exc
 
-    baseline_index = _index_side(
+    baseline_index, baseline_partition = _index_side(
         baseline,
         metric_id=metric_id,
         metric_contract=metric_contract,
         side="baseline",
     )
-    candidate_index = _index_side(
+    candidate_index, candidate_partition = _index_side(
         candidate,
         metric_id=metric_id,
         metric_contract=metric_contract,
         side="candidate",
     )
+    request_fingerprint = _request_fingerprint(
+        baseline_index=baseline_index,
+        candidate_index=candidate_index,
+        config=config,
+        metric_contract=metric_contract,
+        metric_id=metric_id,
+    )
     if not baseline_index and not candidate_index:
         raise StabilityError("no observations for metric_id")
 
+    reasons: list[str] = []
+    if (
+        baseline_partition is not None
+        and candidate_partition is not None
+        and baseline_partition != candidate_partition
+    ):
+        reasons.append("partition_mismatch")
+
     baseline_ids = set(baseline_index)
     candidate_ids = set(candidate_index)
-    missing_baseline = sorted(candidate_ids - baseline_ids)
-    missing_candidate = sorted(baseline_ids - candidate_ids)
-    if missing_baseline or missing_candidate:
-        reasons: list[str] = []
-        if missing_baseline:
-            reasons.append("missing_baseline_pairs")
-        if missing_candidate:
-            reasons.append("missing_candidate_pairs")
-        request_fingerprint = canonical_hash(
-            {
-                "baseline": [baseline_index[i].to_dict() for i in sorted(baseline_ids)],
-                "candidate": [
-                    candidate_index[i].to_dict() for i in sorted(candidate_ids)
-                ],
-                "config": config.to_dict(),
-                "metric_contract_fingerprint": metric_contract.fingerprint(),
-                "metric_id": metric_id,
-            }
-        )
-        return PairedStabilityResult(
+    if sorted(candidate_ids - baseline_ids):
+        reasons.append("missing_baseline_pairs")
+    if sorted(baseline_ids - candidate_ids):
+        reasons.append("missing_candidate_pairs")
+    if reasons:
+        return _incomplete(
             request_fingerprint=request_fingerprint,
             metric_id=metric_id,
             direction=definition.direction,
-            aggregation=config.aggregation,
-            status="incomplete",
-            pair_count=0,
-            sample_count=config.sample_count,
-            observed_delta=None,
-            p05=None,
-            p50=None,
-            p95=None,
-            favors_candidate=None,
+            config=config,
             reasons=tuple(reasons),
         )
 
     pair_ids = tuple(sorted(baseline_ids))
     pairs: list[tuple[Decimal, Decimal]] = []
     for observation_id in pair_ids:
-        baseline_value = _require_numeric(baseline_index[observation_id])
-        candidate_value = _require_numeric(candidate_index[observation_id])
-        pairs.append((baseline_value, candidate_value))
+        baseline_obs = baseline_index[observation_id]
+        candidate_obs = candidate_index[observation_id]
+        if baseline_obs.partition_fingerprint != candidate_obs.partition_fingerprint:
+            return _incomplete(
+                request_fingerprint=request_fingerprint,
+                metric_id=metric_id,
+                direction=definition.direction,
+                config=config,
+                reasons=("partition_mismatch",),
+            )
+        pairs.append((_require_numeric(baseline_obs), _require_numeric(candidate_obs)))
 
     if config.aggregation == "sum" and config.blocks_per_sample != len(pairs):
         raise StabilityError(
@@ -272,38 +398,44 @@ def paired_resample_stability(
     if config.blocks_per_sample > len(pairs):
         raise StabilityError("blocks_per_sample cannot exceed pair_count")
 
-    baseline_values = [item[0] for item in pairs]
-    candidate_values = [item[1] for item in pairs]
-    observed_delta = _aggregate(candidate_values, config.aggregation) - _aggregate(
-        baseline_values, config.aggregation
-    )
-
-    rng = random.Random(config.seed)
-    sample_deltas: list[Decimal] = []
-    for _ in range(config.sample_count):
-        sampled = [rng.choice(pairs) for _ in range(config.blocks_per_sample)]
-        sample_baseline = [item[0] for item in sampled]
-        sample_candidate = [item[1] for item in sampled]
-        sample_deltas.append(
-            _aggregate(sample_candidate, config.aggregation)
-            - _aggregate(sample_baseline, config.aggregation)
+    try:
+        baseline_values = [item[0] for item in pairs]
+        candidate_values = [item[1] for item in pairs]
+        term_count = max(len(pairs), config.blocks_per_sample)
+        prec = _precision_for_values(
+            baseline_values, candidate_values, term_count=term_count
         )
-    ordered = sorted(sample_deltas)
-    p05 = _quantile(ordered, 5)
-    p50 = _quantile(ordered, 50)
-    p95 = _quantile(ordered, 95)
+        with localcontext(_pinned_context(prec=prec)):
+            # Aggregate pair deltas under operand-sized precision so large shared
+            # magnitudes cannot cancel the measured change.
+            pair_deltas = [
+                candidate_value - baseline_value
+                for baseline_value, candidate_value in pairs
+            ]
+            observed_delta = _aggregate(pair_deltas, config.aggregation, prec=prec)
+
+            rng = random.Random(config.seed)
+            sample_deltas: list[Decimal] = []
+            for _ in range(config.sample_count):
+                sampled = [rng.choice(pairs) for _ in range(config.blocks_per_sample)]
+                sampled_deltas = [
+                    candidate_value - baseline_value
+                    for baseline_value, candidate_value in sampled
+                ]
+                sample_deltas.append(
+                    _aggregate(sampled_deltas, config.aggregation, prec=prec)
+                )
+            ordered = sorted(sample_deltas)
+            p05 = _quantile(ordered, 5)
+            p50 = _quantile(ordered, 50)
+            p95 = _quantile(ordered, 95)
+    except (InvalidOperation, DivisionByZero, Overflow, Underflow) as exc:
+        raise StabilityError(
+            "stability arithmetic exceeds the supported decimal range"
+        ) from exc
     if not (p05 <= p50 <= p95):
         raise StabilityError("internal quantile ordering invariant violated")
 
-    request_fingerprint = canonical_hash(
-        {
-            "baseline": [baseline_index[i].to_dict() for i in pair_ids],
-            "candidate": [candidate_index[i].to_dict() for i in pair_ids],
-            "config": config.to_dict(),
-            "metric_contract_fingerprint": metric_contract.fingerprint(),
-            "metric_id": metric_id,
-        }
-    )
     return PairedStabilityResult(
         request_fingerprint=request_fingerprint,
         metric_id=metric_id,
