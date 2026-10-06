@@ -228,6 +228,7 @@ def test_schema_assets_validate_with_jsonschema(tmp_path: Path) -> None:
 
     assert SCHEMA_ASSET_NAMES == (
         "evidence_bundle_v1.json",
+        "evaluation_input_v1.json",
         "evaluation_suite_v1.json",
         "metric_observation_v1.json",
     )

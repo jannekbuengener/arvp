@@ -4,12 +4,18 @@ from __future__ import annotations
 
 import math
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, Literal
 
-from arvp.canonical import CanonicalizationError, canonical_hash, canonical_json_dumps
+from arvp.canonical import (
+    CanonicalizationError,
+    FingerprintFormatError,
+    canonical_hash,
+    canonical_json_dumps,
+    validate_fingerprint,
+)
 from arvp.identities import CandidateSpec, EvaluationPartition
 
 METRIC_DEFINITION_CONTRACT_VERSION = "arvp.metric-definition.v1"
@@ -306,6 +312,70 @@ class Observation:
 
     def fingerprint(self) -> str:
         return canonical_hash(self.to_dict())
+
+    @classmethod
+    def from_dict(
+        cls, payload: Mapping[str, Any], *, metric_contract: MetricContract
+    ) -> Observation:
+        """Revive a portable observation mapping without consumer runtime objects."""
+        if not isinstance(payload, Mapping):
+            raise MetricContractError("observation payload must be a mapping")
+        if type(metric_contract) is not MetricContract:
+            raise MetricContractError("metric_contract must be a MetricContract")
+        contract_version = payload.get("contract_version", OBSERVATION_CONTRACT_VERSION)
+        if contract_version != OBSERVATION_CONTRACT_VERSION:
+            raise MetricContractError(
+                f"contract_version must be {OBSERVATION_CONTRACT_VERSION!r}"
+            )
+        observation_id = _require_observation_id(payload.get("observation_id"))
+        try:
+            candidate_fingerprint = validate_fingerprint(
+                payload.get("candidate_fingerprint"), "candidate_fingerprint"
+            )
+            partition_fingerprint = validate_fingerprint(
+                payload.get("partition_fingerprint"), "partition_fingerprint"
+            )
+        except FingerprintFormatError as exc:
+            raise MetricContractError(str(exc)) from exc
+        partition_id = payload.get("partition_id")
+        if type(partition_id) is not str or not partition_id.strip():
+            raise MetricContractError("partition_id must be a non-empty string")
+        metric_payload = payload.get("metric")
+        if not isinstance(metric_payload, Mapping):
+            raise MetricContractError("metric must be a mapping")
+        metric_id = metric_payload.get("metric_id")
+        status = metric_payload.get("status")
+        if type(metric_id) is not str:
+            raise MetricContractError("metric.metric_id must be a string")
+        if type(status) is not str or status not in _VALID_STATUSES:
+            raise MetricContractError(
+                "status must be measured, derived, unknown, or not_applicable"
+            )
+        typed_status: MetricValueStatus = status  # type: ignore[assignment]
+        if "value" in metric_payload:
+            metric = metric_contract.value(
+                metric_id, typed_status, metric_payload["value"]
+            )
+        else:
+            metric = metric_contract.value(metric_id, typed_status)
+        expected_fp = metric_contract.fingerprint()
+        declared_fp = metric_payload.get("metric_contract_fingerprint")
+        if declared_fp is not None and declared_fp != expected_fp:
+            raise MetricContractError(
+                "metric contract fingerprint does not match MetricContract"
+            )
+        if metric.metric_contract_fingerprint != expected_fp:
+            raise MetricContractError(
+                "metric contract fingerprint does not match MetricContract"
+            )
+        instance = object.__new__(cls)
+        object.__setattr__(instance, "observation_id", observation_id)
+        object.__setattr__(instance, "candidate_fingerprint", candidate_fingerprint)
+        object.__setattr__(instance, "partition_id", partition_id.strip())
+        object.__setattr__(instance, "partition_fingerprint", partition_fingerprint)
+        object.__setattr__(instance, "metric", metric)
+        object.__setattr__(instance, "contract_version", OBSERVATION_CONTRACT_VERSION)
+        return instance
 
 
 def validate_observations(

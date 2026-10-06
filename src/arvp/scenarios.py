@@ -1,4 +1,15 @@
-"""Explicit scenario orchestration with deterministic outcome evidence."""
+"""Scenario Harness v2: decision-relevant scenario identity and orchestration.
+
+Scenario and group fingerprints bind:
+- scenario specification + parameters
+- candidate fingerprint
+- dataset/partition/suite fingerprint
+- execution mode/configuration
+- safe result semantics
+
+Volatile wall-clock timestamps are recorded for presentation only and never
+enter semantic fingerprints.
+"""
 
 from __future__ import annotations
 
@@ -12,8 +23,10 @@ from typing import Any, Literal
 
 from arvp.canonical import (
     CanonicalizationError,
+    FingerprintFormatError,
     canonical_hash,
     canonical_json_dumps,
+    validate_fingerprint,
 )
 from arvp.evidence import (
     FailureEvidence,
@@ -22,7 +35,10 @@ from arvp.evidence import (
 )
 from arvp.metrics import MetricContract, MetricContractError, MetricValue
 
+SCENARIO_CONTRACT_VERSION = "arvp.scenario.v2"
+SCENARIO_MANIFEST_CONTRACT_VERSION = "arvp.scenario-manifest.v2"
 _GROUP_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+_EXECUTION_MODE_RE = re.compile(r"^[a-z][a-z0-9_.-]{0,63}$")
 
 
 class ScenarioError(ValueError):
@@ -35,15 +51,18 @@ def _require_text(value: object, field: str) -> str:
     return value.strip()
 
 
+def _require_fingerprint(value: object, field: str) -> str:
+    try:
+        return validate_fingerprint(value, field)
+    except FingerprintFormatError as exc:
+        raise ScenarioError(str(exc)) from exc
+
+
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
 def _assert_evidence_safe(value: Any) -> None:
-    """Fail closed when evidence could include a path, secret, or DSN.
-
-    Delegates to the shared portable evidence boundary.
-    """
     try:
         validate_portable_metadata(value)
     except PortableEvidenceError as exc:
@@ -52,9 +71,17 @@ def _assert_evidence_safe(value: Any) -> None:
 
 @dataclass(frozen=True, slots=True)
 class Scenario:
+    """Decision-relevant scenario request for Harness v2."""
+
     scenario_id: str
     description: str
     parameters: Mapping[str, Any]
+    candidate_fingerprint: str
+    suite_fingerprint: str
+    partition_fingerprint: str
+    execution_mode: str = "in_process"
+    configuration: Mapping[str, Any] | None = None
+    contract_version: str = SCENARIO_CONTRACT_VERSION
 
     def __post_init__(self) -> None:
         _require_text(self.scenario_id, "scenario_id")
@@ -68,19 +95,69 @@ class Scenario:
         except CanonicalizationError as exc:
             raise ScenarioError(f"parameters not canonicalizable: {exc}") from exc
         object.__setattr__(self, "parameters", parameters)
+        object.__setattr__(
+            self,
+            "candidate_fingerprint",
+            _require_fingerprint(self.candidate_fingerprint, "candidate_fingerprint"),
+        )
+        object.__setattr__(
+            self,
+            "suite_fingerprint",
+            _require_fingerprint(self.suite_fingerprint, "suite_fingerprint"),
+        )
+        object.__setattr__(
+            self,
+            "partition_fingerprint",
+            _require_fingerprint(self.partition_fingerprint, "partition_fingerprint"),
+        )
+        if (
+            type(self.execution_mode) is not str
+            or _EXECUTION_MODE_RE.fullmatch(self.execution_mode) is None
+        ):
+            raise ScenarioError("execution_mode must match ^[a-z][a-z0-9_.-]{0,63}$")
+        if self.configuration is None:
+            configuration: dict[str, Any] = {}
+        else:
+            if not isinstance(self.configuration, Mapping):
+                raise ScenarioError("configuration must be a mapping or None")
+            configuration = copy.deepcopy(dict(self.configuration))
+            _assert_evidence_safe(configuration)
+            try:
+                canonical_json_dumps(configuration)
+            except CanonicalizationError as exc:
+                raise ScenarioError(
+                    f"configuration not canonicalizable: {exc}"
+                ) from exc
+        object.__setattr__(self, "configuration", configuration)
+        if self.contract_version != SCENARIO_CONTRACT_VERSION:
+            raise ScenarioError(
+                f"contract_version must be {SCENARIO_CONTRACT_VERSION!r}"
+            )
 
     def to_dict(self) -> dict[str, Any]:
+        configuration = self.configuration if self.configuration is not None else {}
         return {
+            "candidate_fingerprint": self.candidate_fingerprint,
+            "configuration": dict(configuration),
+            "contract_version": self.contract_version,
             "description": self.description,
+            "execution_mode": self.execution_mode,
             "parameters": dict(self.parameters),
+            "partition_fingerprint": self.partition_fingerprint,
             "scenario_id": self.scenario_id,
+            "suite_fingerprint": self.suite_fingerprint,
         }
+
+    def fingerprint(self) -> str:
+        """Semantic scenario identity; excludes wall-clock timestamps."""
+        return canonical_hash(self.to_dict())
 
 
 @dataclass(frozen=True, slots=True)
 class ScenarioResult:
     scenario_id: str
     exit_code: int
+    request_fingerprint: str
     metrics: tuple[MetricValue, ...] | None = None
     failure: FailureEvidence | None = None
     metric_contract: MetricContract | None = None
@@ -89,6 +166,11 @@ class ScenarioResult:
         _require_text(self.scenario_id, "scenario_id")
         if isinstance(self.exit_code, bool) or not isinstance(self.exit_code, int):
             raise ScenarioError("exit_code must be an integer, not bool")
+        object.__setattr__(
+            self,
+            "request_fingerprint",
+            _require_fingerprint(self.request_fingerprint, "request_fingerprint"),
+        )
         if self.exit_code == 0 and self.failure is not None:
             raise ScenarioError("successful scenarios cannot have a failure")
         if self.exit_code != 0 and self.failure is None:
@@ -116,6 +198,7 @@ class ScenarioResult:
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "exit_code": self.exit_code,
+            "request_fingerprint": self.request_fingerprint,
             "scenario_id": self.scenario_id,
         }
         if self.metrics is not None:
@@ -126,6 +209,10 @@ class ScenarioResult:
             payload["failure"] = self.failure.to_dict()
         return payload
 
+    def semantic_dict(self) -> dict[str, Any]:
+        """Result payload used for group fingerprints (no volatile fields)."""
+        return self.to_dict()
+
 
 @dataclass(frozen=True, slots=True)
 class ScenarioManifest:
@@ -134,9 +221,11 @@ class ScenarioManifest:
     started_at_utc: str
     finished_at_utc: str
     results: tuple[ScenarioResult, ...]
+    contract_version: str = SCENARIO_MANIFEST_CONTRACT_VERSION
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "contract_version": self.contract_version,
             "failed_count": sum(not result.succeeded for result in self.results),
             "finished_at_utc": self.finished_at_utc,
             "group_fingerprint": self.group_fingerprint,
@@ -195,7 +284,10 @@ def run_scenarios(
     )
     started = clock().astimezone(timezone.utc).isoformat()
     results: list[ScenarioResult] = []
+    request_fingerprints: list[str] = []
     for scenario in scenarios:
+        request_fp = scenario.fingerprint()
+        request_fingerprints.append(request_fp)
         try:
             result = runner(scenario)
         except Exception as exc:
@@ -204,21 +296,27 @@ def run_scenarios(
             result = ScenarioResult(
                 scenario_id=scenario.scenario_id,
                 exit_code=2,
+                request_fingerprint=request_fp,
                 failure=FailureEvidence.from_unexpected_exception(exc, stage="runner"),
             )
         if not isinstance(result, ScenarioResult):
             raise ScenarioError("runner must return a ScenarioResult")
         if result.scenario_id != scenario.scenario_id:
             raise ScenarioError("runner returned a result for a different scenario")
+        if result.request_fingerprint != request_fp:
+            raise ScenarioError(
+                "runner returned a result for a different scenario request"
+            )
         results.append(result)
 
-    outcomes = [
-        {"exit_code": result.exit_code, "scenario_id": result.scenario_id}
-        for result in results
-    ]
     try:
         fingerprint = canonical_hash(
-            {"group_id": resolved_group_id, "outcomes": outcomes}
+            {
+                "contract_version": SCENARIO_MANIFEST_CONTRACT_VERSION,
+                "group_id": resolved_group_id,
+                "requests": request_fingerprints,
+                "results": [result.semantic_dict() for result in results],
+            }
         )
     except CanonicalizationError as exc:
         raise ScenarioError(f"scenario outcomes not canonicalizable: {exc}") from exc

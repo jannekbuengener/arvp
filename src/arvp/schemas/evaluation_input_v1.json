@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arvp.local/schemas/evaluation_input_v1.json",
+  "title": "ARVP Evaluation Input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "baseline_candidate",
+    "baseline_observations",
+    "candidate_fingerprint",
+    "candidate_observations",
+    "contract_version",
+    "gate_policy",
+    "metric_contract",
+    "partition_id",
+    "run_provenance",
+    "suite"
+  ],
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "const": "arvp.evaluation-input.v1"
+    },
+    "suite": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "metric_contract": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "gate_policy": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "baseline_candidate": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "candidate_fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "partition_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_provenance": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "baseline_observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "candidate_observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "failures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "stability_config": {
+      "type": ["object", "null"],
+      "additionalProperties": true
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}
