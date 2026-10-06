@@ -610,6 +610,52 @@ def test_large_magnitude_pair_delta_is_not_rounded_away() -> None:
     assert result.favors_candidate is True
 
 
+def test_crossed_large_magnitude_pair_deltas_preserve_low_order_digits() -> None:
+    contract = _contract()
+    baseline = (
+        _obs(
+            contract,
+            candidate_id="b",
+            metric_id="quality.score",
+            observation_id="o1",
+            value=Decimal("0"),
+        ),
+        _obs(
+            contract,
+            candidate_id="b",
+            metric_id="quality.score",
+            observation_id="o2",
+            value=Decimal("1e100"),
+        ),
+    )
+    candidate = (
+        _obs(
+            contract,
+            candidate_id="c",
+            metric_id="quality.score",
+            observation_id="o1",
+            value=Decimal("1e100"),
+        ),
+        _obs(
+            contract,
+            candidate_id="c",
+            metric_id="quality.score",
+            observation_id="o2",
+            value=Decimal("1"),
+        ),
+    )
+    result = paired_resample_stability(
+        baseline=baseline,
+        candidate=candidate,
+        metric_contract=contract,
+        metric_id="quality.score",
+        config=StabilityConfig("mean", 20, 2, seed=1),
+    )
+    assert result.status == "complete"
+    assert result.observed_delta == Decimal("0.5")
+    assert result.favors_candidate is True
+
+
 def test_incomplete_reports_partition_and_missing_pair_reasons() -> None:
     contract = _contract()
     left_partition = _partition("left")

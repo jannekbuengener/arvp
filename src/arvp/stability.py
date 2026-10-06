@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import (
     MAX_EMAX,
+    MAX_PREC,
     MIN_EMIN,
     ROUND_HALF_EVEN,
     Context,
@@ -35,12 +36,43 @@ StabilityStatus = Literal["complete", "incomplete"]
 _VALID_AGGREGATIONS = frozenset({"mean", "sum"})
 _NUMERIC_STATUSES = frozenset({"measured", "derived"})
 _ARITHMETIC_PRECISION = 50
+_EXACT_RELATION_SLACK = 2
 
 
-def _pinned_context() -> Context:
+def _nonzero_span(value: Decimal) -> tuple[int, int] | None:
+    if value.is_zero():
+        return None
+    _, _, exponent = value.as_tuple()
+    assert isinstance(exponent, int), "exponent must be int for finite Decimal"
+    return value.adjusted(), exponent
+
+
+def _precision_for_values(*groups: Sequence[Decimal]) -> int:
+    """Precision covering MSD→LSD span of non-zero operands (+ slack)."""
+    spans = [
+        span
+        for group in groups
+        for value in group
+        for span in (_nonzero_span(value),)
+        if span is not None
+    ]
+    if not spans:
+        return _ARITHMETIC_PRECISION
+    needed = (
+        max(adjusted for adjusted, _ in spans)
+        - min(exponent for _, exponent in spans)
+        + 1
+        + _EXACT_RELATION_SLACK
+    )
+    if needed > MAX_PREC:
+        raise StabilityError("stability arithmetic exceeds the supported decimal range")
+    return max(_ARITHMETIC_PRECISION, needed)
+
+
+def _pinned_context(*, prec: int = _ARITHMETIC_PRECISION) -> Context:
     """Fixed deterministic context; never inherits decimal.DefaultContext."""
     return Context(
-        prec=_ARITHMETIC_PRECISION,
+        prec=prec,
         rounding=ROUND_HALF_EVEN,
         Emax=MAX_EMAX,
         Emin=MIN_EMIN,
@@ -133,11 +165,13 @@ class PairedStabilityResult:
         return canonical_hash(self.to_dict())
 
 
-def _aggregate(values: Sequence[Decimal], aggregation: Aggregation) -> Decimal:
+def _aggregate(
+    values: Sequence[Decimal], aggregation: Aggregation, *, prec: int
+) -> Decimal:
     if not values:
         raise StabilityError("cannot aggregate empty values")
     try:
-        with localcontext(_pinned_context()):
+        with localcontext(_pinned_context(prec=prec)):
             total = sum(values, Decimal("0"))
             if aggregation == "sum":
                 return total
@@ -356,14 +390,17 @@ def paired_resample_stability(
         raise StabilityError("blocks_per_sample cannot exceed pair_count")
 
     try:
-        with localcontext(_pinned_context()):
-            # Aggregate pair deltas (not aggregates-then-subtract) so large shared
-            # magnitudes cannot cancel the measured change under fixed precision.
+        baseline_values = [item[0] for item in pairs]
+        candidate_values = [item[1] for item in pairs]
+        prec = _precision_for_values(baseline_values, candidate_values)
+        with localcontext(_pinned_context(prec=prec)):
+            # Aggregate pair deltas under operand-sized precision so large shared
+            # magnitudes cannot cancel the measured change.
             pair_deltas = [
                 candidate_value - baseline_value
                 for baseline_value, candidate_value in pairs
             ]
-            observed_delta = _aggregate(pair_deltas, config.aggregation)
+            observed_delta = _aggregate(pair_deltas, config.aggregation, prec=prec)
 
             rng = random.Random(config.seed)
             sample_deltas: list[Decimal] = []
@@ -373,7 +410,9 @@ def paired_resample_stability(
                     candidate_value - baseline_value
                     for baseline_value, candidate_value in sampled
                 ]
-                sample_deltas.append(_aggregate(sampled_deltas, config.aggregation))
+                sample_deltas.append(
+                    _aggregate(sampled_deltas, config.aggregation, prec=prec)
+                )
             ordered = sorted(sample_deltas)
             p05 = _quantile(ordered, 5)
             p50 = _quantile(ordered, 50)
