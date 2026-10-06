@@ -45,7 +45,7 @@ def test_run_evaluation_plan_fail_fast_by_default() -> None:
     def runner(window: EvaluationWindow) -> WindowResult:
         if window.window_id == "one":
             raise RuntimeError("missing")
-        return WindowResult("two", True, metrics={"score": 1})
+        return WindowResult("two", True)
 
     # Default policy is "raise" - should propagate the exception
     with pytest.raises(RuntimeError, match="missing"):
@@ -60,7 +60,7 @@ def test_run_evaluation_plan_capture_policy() -> None:
     def runner(window: EvaluationWindow) -> WindowResult:
         if window.window_id == "one":
             raise RuntimeError("missing")
-        return WindowResult("two", True, metrics={"score": 1})
+        return WindowResult("two", True)
 
     results = run_evaluation_plan(plan, runner=runner, unexpected_exceptions="capture")
     assert [result.succeeded for result in results] == [False, True]
@@ -83,7 +83,7 @@ def test_run_evaluation_plan_records_runner_exceptions_explicit() -> None:
     def runner(window: EvaluationWindow) -> WindowResult:
         if window.window_id == "one":
             raise RuntimeError("missing")
-        return WindowResult("two", True, metrics={"score": 1})
+        return WindowResult("two", True)
 
     results = run_evaluation_plan(plan, runner=runner, unexpected_exceptions="capture")
     assert [result.succeeded for result in results] == [False, True]
@@ -151,6 +151,41 @@ def test_run_evaluation_plan_rejects_unknown_exception_policy_before_runner() ->
     with pytest.raises(EvaluationError, match="unexpected_exceptions"):
         run_evaluation_plan(
             plan,
-            runner=lambda window: WindowResult(window.window_id, True, metrics={}),
+            runner=lambda window: WindowResult(window.window_id, True),
             unexpected_exceptions="ignore",  # type: ignore[arg-type]
         )
+
+
+def test_window_result_validates_and_sorts_typed_metrics_via_metric_contract() -> None:
+    from arvp.metrics import MetricContract, MetricDefinition
+
+    contract = MetricContract(
+        (
+            MetricDefinition("tempo.error", "minimize", "bpm", True),
+            MetricDefinition("runtime.ms", "neutral", "ms", False),
+        )
+    )
+    result = WindowResult(
+        "test",
+        True,
+        metrics=(
+            contract.value("tempo.error", "measured", 2),
+            contract.value("runtime.ms", "unknown"),
+        ),
+        metric_contract=contract,
+    )
+    assert result.metric_contract == contract
+    assert [value.metric_id for value in result.metrics] == [
+        "runtime.ms",
+        "tempo.error",
+    ]
+
+
+def test_window_result_rejects_untyped_metrics_and_missing_metric_contract() -> None:
+    from arvp.metrics import MetricContract, MetricDefinition
+
+    contract = MetricContract((MetricDefinition("score", "maximize", "1", True),))
+    with pytest.raises(EvaluationError, match="tuple of MetricValue"):
+        WindowResult("test", True, metrics={"score": 1})  # type: ignore[arg-type]
+    with pytest.raises(EvaluationError, match="metric_contract"):
+        WindowResult("test", True, metrics=(contract.value("score", "measured", 1),))

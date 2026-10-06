@@ -38,4 +38,6 @@ python -m pytest
 
 For extraction lineage, scope boundaries, and deferred work, see
 [`docs/EXTRACTION_FROM_CLAIRE.md`](docs/EXTRACTION_FROM_CLAIRE.md) and
-[`docs/GENERALIZATION_ROADMAP.md`](docs/GENERALIZATION_ROADMAP.md).
+[`docs/GENERALIZATION_ROADMAP.md`](docs/GENERALIZATION_ROADMAP.md),
+[`docs/identity-contracts-v1.md`](docs/identity-contracts-v1.md), and
+[`docs/metric-contracts-v1.md`](docs/metric-contracts-v1.md).

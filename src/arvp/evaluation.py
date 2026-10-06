@@ -13,11 +13,8 @@ from arvp.canonical import (
     canonical_hash,
     validate_fingerprint,
 )
-from arvp.evidence import (
-    FailureEvidence,
-    PortableEvidenceError,
-    validate_portable_metadata,
-)
+from arvp.evidence import FailureEvidence
+from arvp.metrics import MetricContract, MetricContractError, MetricValue
 
 
 class EvaluationError(ValueError):
@@ -28,17 +25,6 @@ def _require_text(value: object, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise EvaluationError(f"{field} must be a non-empty string")
     return value.strip()
-
-
-def _assert_evidence_safe(value: Any) -> None:
-    """Fail closed when evidence could include a path, secret, or DSN.
-
-    Delegates to the shared portable evidence boundary.
-    """
-    try:
-        validate_portable_metadata(value)
-    except PortableEvidenceError as exc:
-        raise EvaluationError(str(exc)) from exc
 
 
 def _decimal(value: object, field: str) -> Decimal:
@@ -117,8 +103,9 @@ class EvaluationPlan:
 class WindowResult:
     window_id: str
     succeeded: bool
-    metrics: Mapping[str, Any] | None = None
+    metrics: tuple[MetricValue, ...] | None = None
     failure: FailureEvidence | None = None
+    metric_contract: MetricContract | None = None
 
     def __post_init__(self) -> None:
         _require_text(self.window_id, "window_id")
@@ -130,10 +117,19 @@ class WindowResult:
             raise EvaluationError("failed result requires a failure")
         if self.failure is not None and not isinstance(self.failure, FailureEvidence):
             raise EvaluationError("failure must be a FailureEvidence instance")
-        if self.metrics is not None:
-            if not isinstance(self.metrics, Mapping):
-                raise EvaluationError("metrics must be a mapping")
-            _assert_evidence_safe(self.metrics)
+        if self.metrics is None:
+            if self.metric_contract is not None:
+                raise EvaluationError("metric_contract requires metrics")
+            return
+        if type(self.metrics) is not tuple:
+            raise EvaluationError("metrics must be a tuple of MetricValue instances")
+        if type(self.metric_contract) is not MetricContract:
+            raise EvaluationError("metrics require a metric_contract")
+        try:
+            validated = self.metric_contract.validate_values(self.metrics)
+        except MetricContractError as exc:
+            raise EvaluationError(str(exc)) from exc
+        object.__setattr__(self, "metrics", validated)
 
 
 RunnerExceptionPolicy = Literal["raise", "capture"]

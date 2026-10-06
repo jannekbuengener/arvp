@@ -29,7 +29,7 @@ def test_scenario_harness_runs_all_variants_and_has_stable_outcome_fingerprint(
     def runner(scenario: Scenario) -> ScenarioResult:
         if scenario.scenario_id == "variant":
             raise RuntimeError("input unavailable")
-        return ScenarioResult(scenario.scenario_id, 0, metrics={"score": 1})
+        return ScenarioResult(scenario.scenario_id, 0)
 
     first = run_scenarios(
         scenarios, runner=runner, clock=_fixed_clock, unexpected_exceptions="capture"
@@ -62,7 +62,7 @@ def test_scenario_harness_fail_fast_by_default() -> None:
     def runner(scenario: Scenario) -> ScenarioResult:
         if scenario.scenario_id == "variant":
             raise RuntimeError("input unavailable")
-        return ScenarioResult(scenario.scenario_id, 0, metrics={"score": 1})
+        return ScenarioResult(scenario.scenario_id, 0)
 
     # Default policy is "raise" - should propagate the exception
     with pytest.raises(RuntimeError, match="input unavailable"):
@@ -121,7 +121,7 @@ def test_run_scenarios_wraps_group_id_canonicalization_error() -> None:
     with pytest.raises(ScenarioError, match="canonical"):
         run_scenarios(
             [scenario],
-            runner=lambda item: ScenarioResult(item.scenario_id, 0, metrics={}),
+            runner=lambda item: ScenarioResult(item.scenario_id, 0),
             clock=_fixed_clock,
         )
 
@@ -176,7 +176,49 @@ def test_run_scenarios_rejects_unknown_exception_policy_before_runner() -> None:
     with pytest.raises(ScenarioError, match="unexpected_exceptions"):
         run_scenarios(
             [scenario],
-            runner=lambda item: ScenarioResult(item.scenario_id, 0, metrics={}),
+            runner=lambda item: ScenarioResult(item.scenario_id, 0),
             clock=_fixed_clock,
             unexpected_exceptions="ignore",  # type: ignore[arg-type]
         )
+
+
+def test_scenario_result_validates_and_serializes_typed_metrics_via_metric_contract() -> (
+    None
+):
+    from arvp.metrics import MetricContract, MetricDefinition
+
+    contract = MetricContract(
+        (
+            MetricDefinition("tempo.error", "minimize", "bpm", True),
+            MetricDefinition("runtime.ms", "neutral", "ms", False),
+        )
+    )
+    result = ScenarioResult(
+        "test",
+        0,
+        metrics=(
+            contract.value("tempo.error", "measured", 2),
+            contract.value("runtime.ms", "unknown"),
+        ),
+        metric_contract=contract,
+    )
+    assert result.metric_contract == contract
+    assert [value.metric_id for value in result.metrics] == [
+        "runtime.ms",
+        "tempo.error",
+    ]
+    assert result.to_dict()["metric_contract_fingerprint"] == contract.fingerprint()
+    assert [item["metric_id"] for item in result.to_dict()["metrics"]] == [
+        "runtime.ms",
+        "tempo.error",
+    ]
+
+
+def test_scenario_result_rejects_untyped_metrics_and_missing_metric_contract() -> None:
+    from arvp.metrics import MetricContract, MetricDefinition
+
+    contract = MetricContract((MetricDefinition("score", "maximize", "1", True),))
+    with pytest.raises(ScenarioError, match="tuple of MetricValue"):
+        ScenarioResult("test", 0, metrics={"score": 1})  # type: ignore[arg-type]
+    with pytest.raises(ScenarioError, match="metric_contract"):
+        ScenarioResult("test", 0, metrics=(contract.value("score", "measured", 1),))
