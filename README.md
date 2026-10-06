@@ -19,13 +19,14 @@ datasets.
 DATASET -> CANDIDATE -> RUN -> METRICS -> COMPARE -> GATE -> EVIDENCE
 ```
 
-The package currently exposes five focused modules:
+The package currently exposes focused modules:
 
 - `arvp.canonical` — canonical JSON and SHA-256 hashing
-- `arvp.datasets` — safe request and content identities
+- `arvp.datasets` — safe request and explicit ordered/unordered content identities
+- `arvp.identities` — domain-neutral candidate and evaluation-partition identities
 - `arvp.provenance` — deterministic run identities and append-only JSONL records
 - `arvp.scenarios` — explicit, fail-closed scenario orchestration
-- `arvp.evaluation` — walk-forward plans, resampling, comparison, and gates
+- `arvp.evaluation` — legacy window execution plus resampling, comparison, and gate helpers
 
 ## Development
 
