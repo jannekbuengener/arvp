@@ -1,14 +1,24 @@
-"""Deterministic run provenance and an append-only JSONL registry."""
+"""RunProvenance v2 and an append-only, single-writer JSONL registry.
+
+The JSONL registry is a local convenience/history index, not the canonical
+portable evidence artifact (see Evidence Bundle v1 / Issue #11).
+
+v0.2 is explicitly **single-writer**: concurrent writers are unsupported.
+Callers must serialize appends to one registry path. The implementation fails
+closed on malformed/corrupted lines and invalid lifecycle transitions; it does
+not add a cross-platform lock dependency.
+"""
 
 from __future__ import annotations
 
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from arvp.canonical import (
     CanonicalizationError,
@@ -21,17 +31,31 @@ from arvp.evidence import (
     PortableEvidenceError,
     validate_portable_metadata,
 )
+from arvp.suite import EvaluationSuite
 
+RUN_PROVENANCE_CONTRACT_VERSION = "arvp.run-provenance.v2"
+RUN_RECORD_SCHEMA_VERSION = "arvp.run-record.v2"
+MAX_ATTEMPT = 9999
 _RUN_ID_RE = re.compile(r"^run-[a-f0-9]{12}-\d{4}$")
+RunStatus = Literal["running", "completed", "failed"]
 _VALID_STATUSES = frozenset({"running", "completed", "failed"})
+_TERMINAL_STATUSES = frozenset({"completed", "failed"})
 
 
 class ProvenanceError(ValueError):
     """Raised when portable provenance or a registry record is invalid."""
 
 
+def default_arvp_version() -> str:
+    """Installed package version, or an explicit unknown marker."""
+    try:
+        return version("arvp")
+    except PackageNotFoundError:
+        return "0.0.0+unknown"
+
+
 def _require_text(value: object, field: str) -> str:
-    if not isinstance(value, str) or not value.strip():
+    if type(value) is not str or not value.strip():
         raise ProvenanceError(f"{field} must be a non-empty string")
     return value.strip()
 
@@ -43,7 +67,8 @@ def _require_fingerprint(value: object, field: str) -> str:
         raise ProvenanceError(str(exc)) from exc
 
 
-def _parse_utc(value: object, field: str) -> str:
+def canonicalize_utc(value: object, field: str) -> str:
+    """Parse an aware UTC timestamp and return canonical ``...Z`` form."""
     text = _require_text(value, field)
     try:
         parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
@@ -51,35 +76,73 @@ def _parse_utc(value: object, field: str) -> str:
         raise ProvenanceError(f"{field} must be an ISO-8601 timestamp") from exc
     if parsed.tzinfo is None or parsed.utcoffset() != timedelta(0):
         raise ProvenanceError(f"{field} must carry an explicit UTC offset")
-    return text
+    utc = parsed.astimezone(timezone.utc)
+    if utc.microsecond:
+        return utc.strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
+    return utc.strftime("%Y-%m-%dT%H:%M:%S") + "Z"
 
 
 def _assert_evidence_safe(value: Any) -> None:
-    """Fail closed when evidence could include a path, secret, or DSN.
-
-    Delegates to the shared portable evidence boundary.
-    """
     try:
         validate_portable_metadata(value)
     except PortableEvidenceError as exc:
         raise ProvenanceError(str(exc)) from exc
 
 
+def _require_attempt(attempt: object) -> int:
+    if isinstance(attempt, bool) or not isinstance(attempt, int) or attempt < 1:
+        raise ProvenanceError("attempt must be a positive integer")
+    if attempt > MAX_ATTEMPT:
+        raise ProvenanceError(f"attempt must be <= {MAX_ATTEMPT}")
+    return attempt
+
+
 @dataclass(frozen=True, slots=True)
 class RunProvenance:
-    """Inputs that determine a reproducible run independently of its attempt."""
+    """Inputs that determine a reproducible run independently of its attempt.
 
-    candidate_id: str
-    dataset_fingerprint: str
+    Attempt identity is carried only by ``run_id(attempt)`` / registry records,
+    never by the provenance fingerprint itself.
+    """
+
+    candidate_fingerprint: str
+    suite_fingerprint: str
+    partition_id: str
+    partition_fingerprint: str
     code_revision: str
     configuration: Mapping[str, Any]
-    contract_version: str = "arvp.run-provenance.v1"
+    arvp_version: str
+    contract_version: str = RUN_PROVENANCE_CONTRACT_VERSION
 
     def __post_init__(self) -> None:
-        _require_text(self.candidate_id, "candidate_id")
-        _require_fingerprint(self.dataset_fingerprint, "dataset_fingerprint")
-        _require_text(self.code_revision, "code_revision")
-        _require_text(self.contract_version, "contract_version")
+        object.__setattr__(
+            self,
+            "candidate_fingerprint",
+            _require_fingerprint(self.candidate_fingerprint, "candidate_fingerprint"),
+        )
+        object.__setattr__(
+            self,
+            "suite_fingerprint",
+            _require_fingerprint(self.suite_fingerprint, "suite_fingerprint"),
+        )
+        object.__setattr__(
+            self, "partition_id", _require_text(self.partition_id, "partition_id")
+        )
+        object.__setattr__(
+            self,
+            "partition_fingerprint",
+            _require_fingerprint(self.partition_fingerprint, "partition_fingerprint"),
+        )
+        object.__setattr__(
+            self, "code_revision", _require_text(self.code_revision, "code_revision")
+        )
+        object.__setattr__(
+            self, "arvp_version", _require_text(self.arvp_version, "arvp_version")
+        )
+        if self.contract_version != RUN_PROVENANCE_CONTRACT_VERSION:
+            raise ProvenanceError(
+                f"contract_version must be {RUN_PROVENANCE_CONTRACT_VERSION!r}"
+            )
         if not isinstance(self.configuration, Mapping):
             raise ProvenanceError("configuration must be a mapping")
         copied = dict(self.configuration)
@@ -90,21 +153,55 @@ class RunProvenance:
             raise ProvenanceError(f"configuration not canonicalizable: {exc}") from exc
         object.__setattr__(self, "configuration", copied)
 
+    @classmethod
+    def bind(
+        cls,
+        *,
+        candidate_fingerprint: str,
+        suite: EvaluationSuite,
+        partition_id: str,
+        code_revision: str,
+        configuration: Mapping[str, Any] | None = None,
+        arvp_version: str | None = None,
+    ) -> RunProvenance:
+        """Bind a suite partition plus candidate/code identity into provenance v2."""
+        if type(suite) is not EvaluationSuite:
+            raise ProvenanceError("suite must be an EvaluationSuite")
+        partition = suite.partition(partition_id)
+        return cls(
+            candidate_fingerprint=candidate_fingerprint,
+            suite_fingerprint=suite.fingerprint(),
+            partition_id=partition.partition_id,
+            partition_fingerprint=partition.fingerprint(),
+            code_revision=code_revision,
+            configuration={} if configuration is None else configuration,
+            arvp_version=default_arvp_version()
+            if arvp_version is None
+            else arvp_version,
+        )
+
     def to_dict(self) -> dict[str, Any]:
         return {
-            "candidate_id": self.candidate_id,
+            "arvp_version": self.arvp_version,
+            "candidate_fingerprint": self.candidate_fingerprint,
             "code_revision": self.code_revision,
             "configuration": dict(self.configuration),
             "contract_version": self.contract_version,
-            "dataset_fingerprint": self.dataset_fingerprint,
+            "partition_fingerprint": self.partition_fingerprint,
+            "partition_id": self.partition_id,
+            "suite_fingerprint": self.suite_fingerprint,
         }
 
     def fingerprint(self) -> str:
         return canonical_hash(self.to_dict())
 
     def run_id(self, attempt: int) -> str:
-        if isinstance(attempt, bool) or not isinstance(attempt, int) or attempt < 1:
-            raise ProvenanceError("attempt must be a positive integer")
+        """Display/run identity: ``run-<12 hex of provenance fp>-<4 digit attempt>``.
+
+        Semantic attempt lookup must use the full provenance fingerprint; the
+        12-hex prefix is a display aid only (max attempt ``MAX_ATTEMPT``).
+        """
+        attempt = _require_attempt(attempt)
         return f"run-{self.fingerprint()[:12]}-{attempt:04d}"
 
 
@@ -118,26 +215,40 @@ class RunRecord:
 
     run_id: str
     provenance_fingerprint: str
-    status: str
+    status: RunStatus
     started_at_utc: str
     finished_at_utc: str | None = None
     failure_reason: str | None = None
     result: Mapping[str, Any] | None = None
+    schema_version: str = RUN_RECORD_SCHEMA_VERSION
 
     def __post_init__(self) -> None:
         if not isinstance(self.run_id, str) or not _RUN_ID_RE.fullmatch(self.run_id):
-            raise ProvenanceError("run_id must match run-<12 hex>-<4 digit attempt>")
-        _require_fingerprint(self.provenance_fingerprint, "provenance_fingerprint")
+            raise ProvenanceError(
+                "run_id must match run-<12 hex>-<4 digit attempt> "
+                f"(attempt 0001..{MAX_ATTEMPT:04d})"
+            )
+        object.__setattr__(
+            self,
+            "provenance_fingerprint",
+            _require_fingerprint(self.provenance_fingerprint, "provenance_fingerprint"),
+        )
+        if self.schema_version != RUN_RECORD_SCHEMA_VERSION:
+            raise ProvenanceError(
+                f"schema_version must be {RUN_RECORD_SCHEMA_VERSION!r}"
+            )
         if self.status not in _VALID_STATUSES:
             raise ProvenanceError(f"status must be one of {sorted(_VALID_STATUSES)}")
-        started = _parse_utc(self.started_at_utc, "started_at_utc")
+        started = canonicalize_utc(self.started_at_utc, "started_at_utc")
+        object.__setattr__(self, "started_at_utc", started)
         finished: str | None = None
         if self.finished_at_utc is not None:
-            finished = _parse_utc(self.finished_at_utc, "finished_at_utc")
+            finished = canonicalize_utc(self.finished_at_utc, "finished_at_utc")
             if datetime.fromisoformat(
                 finished.replace("Z", "+00:00")
             ) < datetime.fromisoformat(started.replace("Z", "+00:00")):
                 raise ProvenanceError("finished_at_utc must be >= started_at_utc")
+            object.__setattr__(self, "finished_at_utc", finished)
         if self.status == "running" and (
             finished is not None or self.failure_reason is not None
         ):
@@ -155,7 +266,11 @@ class RunRecord:
                 "failed records require finished_at_utc and failure_reason"
             )
         if self.failure_reason is not None:
-            _require_text(self.failure_reason, "failure_reason")
+            object.__setattr__(
+                self,
+                "failure_reason",
+                _require_text(self.failure_reason, "failure_reason"),
+            )
         if self.result is not None:
             if not isinstance(self.result, Mapping):
                 raise ProvenanceError("result must be a mapping")
@@ -171,6 +286,7 @@ class RunRecord:
         payload: dict[str, Any] = {
             "provenance_fingerprint": self.provenance_fingerprint,
             "run_id": self.run_id,
+            "schema_version": self.schema_version,
             "started_at_utc": self.started_at_utc,
             "status": self.status,
         }
@@ -183,7 +299,7 @@ class RunRecord:
         return payload
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "RunRecord":
+    def from_dict(cls, payload: Mapping[str, Any]) -> RunRecord:
         expected = {
             "run_id",
             "provenance_fingerprint",
@@ -192,6 +308,7 @@ class RunRecord:
             "finished_at_utc",
             "failure_reason",
             "result",
+            "schema_version",
         }
         unknown = set(payload).difference(expected)
         if unknown:
@@ -207,6 +324,7 @@ class RunRecord:
                 finished_at_utc=payload.get("finished_at_utc"),
                 failure_reason=payload.get("failure_reason"),
                 result=payload.get("result"),
+                schema_version=payload["schema_version"],
             )
         except KeyError as exc:
             raise ProvenanceError(
@@ -214,8 +332,47 @@ class RunRecord:
             ) from exc
 
 
+def _attempt_from_run_id(run_id: str) -> int:
+    return int(run_id.rsplit("-", 1)[1])
+
+
+def _validate_lifecycle_append(
+    existing: Sequence[RunRecord], incoming: RunRecord
+) -> None:
+    """Enforce allowed transitions for one run_id under single-writer append."""
+    same = [record for record in existing if record.run_id == incoming.run_id]
+    if not same:
+        if incoming.status != "running":
+            raise ProvenanceError("first record for a run_id must have status running")
+        return
+
+    for record in same:
+        if record.provenance_fingerprint != incoming.provenance_fingerprint:
+            raise ProvenanceError(
+                "run_id already bound to a different provenance fingerprint"
+            )
+
+    last = same[-1]
+    if last.status in _TERMINAL_STATUSES:
+        raise ProvenanceError(
+            f"run_id {incoming.run_id} already terminal ({last.status})"
+        )
+    if last.status == "running":
+        if incoming.status == "running":
+            raise ProvenanceError("duplicate running record for run_id")
+        if incoming.status not in _TERMINAL_STATUSES:
+            raise ProvenanceError(
+                "running records may only transition to completed or failed"
+            )
+        return
+    raise ProvenanceError(f"illegal lifecycle state: {last.status}")
+
+
 class JsonlRunRegistry:
-    """Small, append-only local registry with strict read validation."""
+    """Append-only local registry with strict read and lifecycle validation.
+
+    Single-writer only. Concurrent appends to the same path are unsupported.
+    """
 
     def __init__(self, path: Path | str) -> None:
         self.path = Path(path)
@@ -223,6 +380,8 @@ class JsonlRunRegistry:
     def append(self, record: RunRecord) -> None:
         if not isinstance(record, RunRecord):
             raise ProvenanceError("record must be a RunRecord")
+        existing = self.load_all()
+        _validate_lifecycle_append(existing, record)
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             with self.path.open("a", encoding="utf-8", newline="\n") as handle:
@@ -256,12 +415,16 @@ class JsonlRunRegistry:
         return records
 
     def next_attempt(self, provenance: RunProvenance) -> int:
+        """Next attempt for this full provenance fingerprint (not the 12-hex prefix)."""
         if not isinstance(provenance, RunProvenance):
             raise ProvenanceError("provenance must be a RunProvenance")
-        prefix = f"run-{provenance.fingerprint()[:12]}-"
+        fingerprint = provenance.fingerprint()
         attempts = [
-            int(record.run_id.rsplit("-", 1)[1])
+            _attempt_from_run_id(record.run_id)
             for record in self.load_all()
-            if record.run_id.startswith(prefix)
+            if record.provenance_fingerprint == fingerprint
         ]
-        return max(attempts, default=0) + 1
+        nxt = max(attempts, default=0) + 1
+        if nxt > MAX_ATTEMPT:
+            raise ProvenanceError(f"attempt must be <= {MAX_ATTEMPT}")
+        return nxt

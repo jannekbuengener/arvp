@@ -24,7 +24,9 @@ The package currently exposes focused modules:
 - `arvp.canonical` — canonical JSON and SHA-256 hashing
 - `arvp.datasets` — safe request and explicit ordered/unordered content identities
 - `arvp.identities` — domain-neutral candidate and evaluation-partition identities
-- `arvp.provenance` — deterministic run identities and append-only JSONL records
+- `arvp.metrics` / `arvp.gates` — typed metrics, baseline comparison, PASS/FAIL/HOLD
+- `arvp.suite` — versioned `EvaluationSuite` binding content, partitions, metrics, gates
+- `arvp.provenance` — RunProvenance v2 and single-writer JSONL registry integrity
 - `arvp.scenarios` — explicit, fail-closed scenario orchestration
 - `arvp.evaluation` — legacy window execution plus resampling, comparison, and gate helpers
 
@@ -39,6 +41,7 @@ python -m pytest
 For extraction lineage, scope boundaries, and deferred work, see
 [`docs/EXTRACTION_FROM_CLAIRE.md`](docs/EXTRACTION_FROM_CLAIRE.md) and
 [`docs/GENERALIZATION_ROADMAP.md`](docs/GENERALIZATION_ROADMAP.md),
-[`docs/identity-contracts-v1.md`](docs/identity-contracts-v1.md), and
-[`docs/metric-contracts-v1.md`](docs/metric-contracts-v1.md), and
-[`docs/gate-contracts-v1.md`](docs/gate-contracts-v1.md).
+[`docs/identity-contracts-v1.md`](docs/identity-contracts-v1.md),
+[`docs/metric-contracts-v1.md`](docs/metric-contracts-v1.md),
+[`docs/gate-contracts-v1.md`](docs/gate-contracts-v1.md), and
+[`docs/provenance-contracts-v2.md`](docs/provenance-contracts-v2.md).
