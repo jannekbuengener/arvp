@@ -673,9 +673,16 @@ def evaluate_artifacts(
         if stability_config is not None:
             if type(stability_config) is not StabilityConfig:
                 raise AdapterError("stability_config must be a StabilityConfig")
-            metric_ids = sorted(
-                {criterion.metric_id for criterion in gate_policy.criteria}
-            )
+            observation_metric_ids = {
+                observation.metric.metric_id
+                for observation in (*baseline_observations, *candidate_observations)
+            }
+            gate_metric_ids = {
+                criterion.metric_id for criterion in gate_policy.criteria
+            }
+            # Prefer metrics present on the observation sides (paired evidence);
+            # fall back to gate metrics when sides are empty.
+            metric_ids = sorted(observation_metric_ids or gate_metric_ids)
             stability_results = tuple(
                 paired_resample_stability(
                     baseline=baseline_observations,
