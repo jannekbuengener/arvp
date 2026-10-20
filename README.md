@@ -60,6 +60,7 @@ python -m mypy src/arvp
 
 - [`docs/architecture-v0.2.md`](docs/architecture-v0.2.md)
 - [`docs/compatibility-policy-v0.2.md`](docs/compatibility-policy-v0.2.md)
+- [`docs/external-docs/index.md`](docs/external-docs/index.md) — repo-local external technical references
 - [`docs/CHANGELOG-v0.2.md`](docs/CHANGELOG-v0.2.md) / [`CHANGELOG.md`](CHANGELOG.md)
 - [`docs/governance-ruleset-proposal-v0.2.md`](docs/governance-ruleset-proposal-v0.2.md)
   (proposal only; application requires Owner GO)
