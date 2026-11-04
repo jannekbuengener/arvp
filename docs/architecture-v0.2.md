@@ -47,6 +47,26 @@ consumer domain
 These packages must not be imported by `src/arvp`. Core must not gain
 domain-specific required fields to support them.
 
+## External domain consumers (outside this repository)
+
+Domain adapters and role KPI baselines live with the owning repository.
+Example (Agent Workforce Recruiting Agent offline baseline V0.1.2):
+`jannekbuengener/agent-workforce` →
+`docs/employees/recruiting-agent/performance/` consuming ARVP **0.2.0**
+portable EvaluationInput / Evidence Bundle contracts. ARVP remains the
+evaluation framework only — no workforce runtime, promotion, or KPI
+threshold authority is implied by that consumer.
+
+## External domain consumers (outside this repository)
+
+Domain adapters and role KPI baselines live with the owning repository.
+Example (Agent Workforce Recruiting Agent offline baseline V0.1.2):
+`jannekbuengener/agent-workforce` →
+`docs/employees/recruiting-agent/performance/` consuming ARVP **0.2.0**
+portable EvaluationInput / Evidence Bundle contracts. ARVP remains the
+evaluation framework only — no workforce runtime, promotion, or KPI
+threshold authority is implied by that consumer.
+
 ## Non-goals (v0.2)
 
 No workflow engine, plugin discovery, remote execution, DB-as-source-of-truth,
