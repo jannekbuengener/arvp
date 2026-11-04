@@ -44,6 +44,16 @@ portable EvaluationInput (baseline_observations / candidate_observations)
 - `examples/integer_threshold_classification` — synthetic second-domain E2E (#13)
 - `examples/sample_brain_fsld_key_tempo` — Sample Brain FSLD key/tempo (#14)
 
+External domain consumers (e.g. Agent Workforce Recruiting Agent ARVP
+baseline under `docs/employees/recruiting-agent/performance/`) own their
+KPI contracts and evidence; they consume ARVP 0.2.0 portable contracts and
+do not extend `src/arvp`.
+
+External domain consumers (e.g. Agent Workforce Recruiting Agent ARVP
+baseline under `docs/employees/recruiting-agent/performance/`) own their
+KPI contracts and evidence; they consume ARVP 0.2.0 portable contracts and
+do not extend `src/arvp`.
+
 ## Development
 
 Requires Python 3.11 or later.
